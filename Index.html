@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>INK STUDIO</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0a0a0c;--bg2:#111115;--bg3:#1a1a20;
+  --card:#16161c;--card2:#1e1e26;--border:#2a2a35;
+  --accent:#e8c547;--accent2:#ff5c3a;--accent3:#7c5cfc;
+  --text:#f0f0f5;--text2:#8888a0;--text3:#555568;
+  --success:#3ecf8e;--radius:14px;--radius-sm:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;overflow:hidden}
+
+/* APP SHELL — crítico: no usar margin negativo */
+#app{
+  display:flex;flex-direction:column;
+  height:100vh;height:100dvh;
+  width:100%;max-width:430px;
+  margin:0 auto;
+  background:var(--bg);
+  position:relative;
+  overflow:hidden; /* evita que paneles laterales sean visibles */
+}
+
+.header{padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;z-index:10;flex-shrink:0}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px}
+.logo span{color:var(--accent)}
+.hdr-r{display:flex;gap:8px;align-items:center}
+.ibtn{width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;position:relative;flex-shrink:0}
+.ndot{position:absolute;top:5px;right:5px;width:7px;height:7px;background:var(--accent2);border-radius:50%;border:2px solid var(--bg);display:none}
+.avhdr{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent3),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;cursor:pointer}
+
+/* PAGES */
+.content{flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:80px;-webkit-overflow-scrolling:touch;position:relative}
+.content::-webkit-scrollbar{display:none}
+.page{display:none}
+.page.active{display:block;animation:fadeUp .22s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* BOTTOM NAV */
+.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:100;background:rgba(10,10,12,.96);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;padding:6px 0 max(8px,env(safe-area-inset-bottom))}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 0}
+.ni-i{font-size:19px;transition:.15s}
+.ni-l{font-size:9px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:var(--text3);transition:.15s}
+.ni.active .ni-i{transform:scale(1.15)}
+.ni.active .ni-l{color:var(--accent)}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:15px;margin:0 14px 10px}
+.card-sm{padding:11px;margin:0 14px 8px}
+.stitle{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;padding:6px 18px 3px}
+
+/* BADGES */
+.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700}
+.bg{background:rgba(62,207,142,.15);color:var(--success);border:1px solid rgba(62,207,142,.3)}
+.br{background:rgba(255,92,58,.15);color:var(--accent2);border:1px solid rgba(255,92,58,.3)}
+.by{background:rgba(232,197,71,.15);color:var(--accent);border:1px solid rgba(232,197,71,.3)}
+.bp{background:rgba(124,92,252,.15);color:var(--accent3);border:1px solid rgba(124,92,252,.3)}
+
+/* STAT GRID */
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:0 14px 10px}
+.sc{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:13px}
+.sc-l{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;font-weight:600}
+.sc-v{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:1px;margin:3px 0 0}
+.sc.gold .sc-v{color:var(--accent)}.sc.red .sc-v{color:var(--accent2)}.sc.purple .sc-v{color:var(--accent3)}.sc.green .sc-v{color:var(--success)}
+.sc-s{font-size:11px;color:var(--text3)}
+
+/* QA */
+.qa-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:0 14px 14px}
+.qa{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;transition:.15s}
+.qa:active{transform:scale(.93);background:var(--card2)}
+.qa-i{font-size:19px}.qa-l{font-size:9px;color:var(--text2);text-align:center;font-weight:600}
+
+/* FORM */
+.fg{margin-bottom:13px}
+.fl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:5px;display:block}
+.fi{width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;font-size:14px;color:var(--text);font-family:'Outfit',sans-serif;outline:none;transition:.2s}
+.fi:focus{border-color:var(--accent)}
+.fi::placeholder{color:var(--text3)}
+select.fi{appearance:none;cursor:pointer}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.btnp{width:100%;background:var(--accent);color:#000;border:none;border-radius:var(--radius-sm);padding:13px;font-size:15px;font-weight:700;font-family:'Outfit',sans-serif;cursor:pointer;transition:.2s}
+.btnp:active{opacity:.85}
+.btno{width:100%;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px;font-size:14px;font-weight:600;font-family:'Outfit',sans-serif;cursor:pointer;margin-top:7px}
+
+/* SEARCH BAR */
+.sbar{margin:0 14px 10px;position:relative}
+.sbar input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px 10px 38px;font-size:14px;color:var(--text);font-family:'Outfit',sans-serif;outline:none;transition:.2s}
+.sbar input:focus{border-color:var(--accent)}
+.sbar input::placeholder{color:var(--text3)}
+.sbar-ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:15px;pointer-events:none}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(10px);z-index:300;display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:22px 22px 0 0;width:100%;max-width:430px;padding:18px 18px 32px;max-height:88vh;overflow-y:auto;animation:slideUp .23s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.mhandle{width:38px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 14px}
+.mtitle{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;margin-bottom:14px}
+
+/* DETAIL PANEL — FIX: usa right:-100% en lugar de margin negativo */
+.dpanel{
+  position:fixed;
+  top:0;right:-100%;
+  width:100%;max-width:430px;
+  height:100%;height:100dvh;
+  background:var(--bg);
+  z-index:250;
+  transition:right .25s ease;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.dpanel.open{right:0}
+.dp-hdr{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.dp-back{width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0}
+.dp-t{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:2px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dp-body{flex:1;overflow-y:auto;padding:14px}
+.dp-body::-webkit-scrollbar{display:none}
+
+/* LOADER */
+.loader{display:flex;justify-content:center;align-items:center;padding:28px;color:var(--text3);font-size:13px;gap:8px}
+.spin{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .6s linear infinite;flex-shrink:0}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* TOAST */
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-70px);background:var(--success);color:#000;padding:9px 18px;border-radius:28px;font-weight:700;font-size:13px;z-index:9999;transition:.28s;white-space:nowrap;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--accent2);color:#fff}
+
+/* FAB */
+.fab{position:fixed;bottom:88px;right:16px;width:50px;height:50px;border-radius:50%;background:var(--accent);color:#000;font-size:26px;display:none;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 18px rgba(232,197,71,.4);z-index:99;border:none;font-weight:300}
+
+/* CALENDAR */
+.cal-wrap{padding:0 14px 10px}
+.cal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-nav{width:34px;height:34px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;font-weight:700;color:var(--text)}
+.cal-mlbl{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-dow{text-align:center;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;padding:4px 0}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:13px;cursor:pointer;position:relative;transition:.12s;font-weight:500;color:var(--text)}
+.cal-day.today{background:var(--accent);color:#000;font-weight:700}
+.cal-day.sel{background:var(--accent3);color:#fff}
+.cal-day.today.sel{background:var(--accent3)}
+.cal-day.has-appt::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;background:var(--accent2);border-radius:50%}
+.cal-day.today.has-appt::after,.cal-day.sel.has-appt::after{background:rgba(255,255,255,.7)}
+.cal-day.om{color:var(--text3);opacity:.35}
+
+/* CONFLICT */
+.cwarn{background:rgba(255,92,58,.1);border:1px solid rgba(255,92,58,.3);border-radius:var(--radius-sm);padding:10px 13px;margin-bottom:12px;font-size:13px;color:var(--accent2);display:none}
+
+/* TABS */
+.tabrow{display:flex;gap:6px;padding:0 14px 10px;overflow-x:auto}
+.tabrow::-webkit-scrollbar{display:none}
+.tabbtn{padding:5px 13px;border-radius:18px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);color:var(--text2);background:transparent;font-family:'Outfit',sans-serif;white-space:nowrap;transition:.15s}
+.tabbtn.active{background:var(--accent);color:#000;border-color:var(--accent)}
+
+/* FINANCE */
+.fin-big{text-align:center;padding:14px 18px}
+.fin-lbl{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
+.fin-amt{font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--success);line-height:1;letter-spacing:2px}
+.cbars{display:flex;gap:5px;align-items:flex-end;height:90px;margin-bottom:5px}
+.cbc{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.cb{width:100%;border-radius:4px 4px 0 0;min-height:4px;background:linear-gradient(180deg,var(--accent),rgba(232,197,71,.2))}
+.cbl{font-size:9px;color:var(--text3);text-transform:uppercase}
+
+/* PROGRESS */
+.pbar{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:5px}
+.pfill{height:100%;border-radius:3px}
+
+/* EMPTY */
+.empty{text-align:center;padding:36px 18px;color:var(--text3)}
+.ei{font-size:36px;margin-bottom:8px;opacity:.35}
+
+/* CLIENT DROPDOWN */
+.cdrop-wrap{position:relative}
+.cdrop{position:absolute;top:calc(100% + 3px);left:0;right:0;background:var(--bg2);border:1px solid var(--accent);border-radius:var(--radius-sm);z-index:400;max-height:200px;overflow-y:auto;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.cdrop.open{display:block}
+.cdrop-item{padding:11px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:.12s}
+.cdrop-item:last-child{border-bottom:none}
+.cdrop-item:active,.cdrop-item:hover{background:var(--card2)}
+.cdrop-name{font-size:14px;font-weight:600}
+.cdrop-sub{font-size:11px;color:var(--text2);margin-top:1px}
+
+/* AVATAR PHOTO */
+.art-photo{width:70px;height:70px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)}
+.photo-upload{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.photo-btn{background:var(--card);border:1px dashed var(--border);border-radius:var(--radius-sm);padding:8px 14px;font-size:13px;color:var(--text2);cursor:pointer;font-family:'Outfit',sans-serif;transition:.15s}
+.photo-btn:active{border-color:var(--accent);color:var(--accent)}
+
+/* EMOJI PICKER */
+.epick{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.eopt{width:38px;height:38px;border-radius:8px;background:var(--card);border:2px solid transparent;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;transition:.12s}
+.eopt.sel{border-color:var(--accent);background:rgba(232,197,71,.15)}
+
+/* AVATAR COLORS for initials */
+.av0{background:#7c5cfc22!important;color:#7c5cfc!important;border:1.5px solid #7c5cfc40!important}
+.av1{background:#e8c54722!important;color:#e8c547!important;border:1.5px solid #e8c54740!important}
+.av2{background:#ff5c3a22!important;color:#ff5c3a!important;border:1.5px solid #ff5c3a40!important}
+.av3{background:#3ecf8e22!important;color:#3ecf8e!important;border:1.5px solid #3ecf8e40!important}
+.av4{background:#ff8ac422!important;color:#ff8ac4!important;border:1.5px solid #ff8ac440!important}
+.av5{background:#5cc8ff22!important;color:#5cc8ff!important;border:1.5px solid #5cc8ff40!important}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="header">
+    <div class="logo">INK<span>●</span>STUDIO</div>
+    <div class="hdr-r">
+      <div class="ibtn" onclick="checkNotifs()">🔔<div class="ndot" id="ndot"></div></div>
+      <div class="avhdr">IS</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="pg-dashboard">
+      <div style="padding:2px 18px 14px">
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:1px;line-height:1.1">Hola, <span style="color:var(--accent)">Jefe 👋</span></h2>
+        <p style="font-size:12px;color:var(--text2)" id="dash-date"></p>
+      </div>
+      <div class="sgrid">
+        <div class="sc gold"><div class="sc-l">Ingresos hoy</div><div class="sc-v" id="d-hoy">$0</div><div class="sc-s" id="d-hoy-s">—</div></div>
+        <div class="sc red"><div class="sc-l">Citas hoy</div><div class="sc-v" id="d-citas">0</div><div class="sc-s" id="d-citas-s">—</div></div>
+        <div class="sc purple"><div class="sc-l">Mes actual</div><div class="sc-v" id="d-mes">$0</div><div class="sc-s" style="color:var(--success)">ingresos</div></div>
+        <div class="sc green"><div class="sc-l">Clientes</div><div class="sc-v" id="d-cli">0</div><div class="sc-s">registrados</div></div>
+      </div>
+      <div class="qa-grid">
+        <div class="qa" onclick="abrirNuevaCita()"><div class="qa-i">📅</div><div class="qa-l">Nueva cita</div></div>
+        <div class="qa" onclick="abrirNuevoCliente()"><div class="qa-i">👤</div><div class="qa-l">Cliente</div></div>
+        <div class="qa" onclick="abrirCobro()"><div class="qa-i">💳</div><div class="qa-l">Cobro</div></div>
+        <div class="qa" onclick="openModal('m-gasto')"><div class="qa-i">📦</div><div class="qa-l">Gasto</div></div>
+      </div>
+      <div class="card">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;color:var(--text2);margin-bottom:9px">CITAS DE HOY</div>
+        <div id="d-citas-list"><div class="loader"><div class="spin"></div>Cargando...</div></div>
+      </div>
+      <div id="d-stock-alert"></div>
+    </div>
+
+    <!-- AGENDA -->
+    <div class="page" id="pg-agenda">
+      <div class="stitle">AGENDA</div>
+      <div class="cal-wrap">
+        <div class="cal-hdr">
+          <div class="cal-nav" onclick="calPrev()">‹</div>
+          <div class="cal-mlbl" id="cal-mlbl"></div>
+          <div class="cal-nav" onclick="calNext()">›</div>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+      <div class="card">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1.5px;color:var(--text2);margin-bottom:8px" id="cal-dlbl">Toca un día para ver citas</div>
+        <div id="cal-appts"><div class="empty"><div class="ei">📅</div>Selecciona un día</div></div>
+      </div>
+    </div>
+
+    <!-- CLIENTES -->
+    <div class="page" id="pg-clientes">
+      <div class="stitle">CLIENTES</div>
+      <div class="sbar">
+        <span class="sbar-ic">🔍</span>
+        <input type="text" placeholder="Buscar cliente..." id="cli-search" oninput="renderClients()">
+      </div>
+      <div class="tabrow">
+        <button class="tabbtn active" onclick="setCliTab('todos',this)">Todos</button>
+        <button class="tabbtn" onclick="setCliTab('VIP',this)">VIP ⭐</button>
+        <button class="tabbtn" onclick="setCliTab('Regular',this)">Regulares</button>
+        <button class="tabbtn" onclick="setCliTab('Nuevo',this)">Nuevos</button>
+      </div>
+      <div id="cli-list"><div class="loader"><div class="spin"></div>Cargando...</div></div>
+    </div>
+
+    <!-- FINANZAS -->
+    <div class="page" id="pg-finanzas">
+      <div class="stitle">FINANZAS</div>
+      <div class="fin-big">
+        <div class="fin-lbl">Ingresos del mes</div>
+        <div class="fin-amt" id="fin-total">$0</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:3px" id="fin-sub">—</div>
+      </div>
+      <div class="sgrid">
+        <div class="sc green"><div class="sc-l">Ingresos</div><div class="sc-v" id="fin-ing">$0</div><div class="sc-s" id="fin-ingc">—</div></div>
+        <div class="sc red"><div class="sc-l">Gastos</div><div class="sc-v" id="fin-gas">$0</div><div class="sc-s">este mes</div></div>
+      </div>
+      <div class="card">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1.5px;color:var(--text2);margin-bottom:10px">INGRESOS SEMANALES</div>
+        <div class="cbars" id="fin-chart"></div>
+      </div>
+      <div class="stitle" style="font-size:16px">TRANSACCIONES</div>
+      <div id="tx-list"><div class="loader"><div class="spin"></div>Cargando...</div></div>
+      <div style="padding:6px 14px 0">
+        <button class="btno" onclick="showToast('Exportación próximamente')">📄 Exportar reporte</button>
+      </div>
+    </div>
+
+    <!-- MÁS -->
+    <div class="page" id="pg-mas">
+      <div class="stitle">HERRAMIENTAS</div>
+      <div class="stitle" style="font-size:16px">ARTISTAS</div>
+      <div id="art-list"><div class="loader"><div class="spin"></div>Cargando...</div></div>
+      <div style="padding:0 14px 4px"><button class="btnp" onclick="abrirNuevoArtista()">+ Agregar artista</button></div>
+      <div class="stitle" style="font-size:16px;margin-top:10px">INVENTARIO</div>
+      <div id="inv-list"><div class="loader"><div class="spin"></div>Cargando...</div></div>
+      <div style="padding:0 14px 16px"><button class="btnp" onclick="abrirNuevoInsumo()">+ Agregar insumo</button></div>
+    </div>
+
+  </div><!-- /content -->
+
+  <nav class="bnav">
+    <div class="ni active" onclick="goPage('dashboard')" id="ni-dashboard"><div class="ni-i">🏠</div><div class="ni-l">Inicio</div></div>
+    <div class="ni" onclick="goPage('agenda')" id="ni-agenda"><div class="ni-i">📅</div><div class="ni-l">Agenda</div></div>
+    <div class="ni" onclick="goPage('clientes')" id="ni-clientes"><div class="ni-i">👥</div><div class="ni-l">Clientes</div></div>
+    <div class="ni" onclick="goPage('finanzas')" id="ni-finanzas"><div class="ni-i">💵</div><div class="ni-l">Finanzas</div></div>
+    <div class="ni" onclick="goPage('mas')" id="ni-mas"><div class="ni-i">⚡</div><div class="n
