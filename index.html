@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -52,7 +52,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Outfit
 #app{
   display:flex;flex-direction:column;
   height:100vh;height:100dvh;
-  width:100%;max-width:430px;
+  width:100%;max-width:600px; /* más ancho para tablets y phones grandes */
   margin:0 auto;
   background:var(--bg);
   position:relative;
@@ -76,7 +76,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Outfit
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
 /* BOTTOM NAV */
-.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:100;background:rgba(10,10,12,.96);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:none;padding:6px 0 max(8px,env(safe-area-inset-bottom))}
+.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;z-index:100;background:rgba(10,10,12,.96);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:none;padding:6px 0 max(8px,env(safe-area-inset-bottom))}
 .bnav.visible{display:flex}
 .ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 0}
 .ni-i{font-size:19px;transition:.15s}
@@ -132,7 +132,7 @@ select.fi{appearance:none;cursor:pointer}
 /* MODAL */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(10px);z-index:300;display:none;align-items:flex-end;justify-content:center}
 .overlay.open{display:flex}
-.modal{background:var(--bg2);border:1px solid var(--border);border-radius:22px 22px 0 0;width:100%;max-width:430px;padding:18px 18px 32px;max-height:88vh;overflow-y:auto;animation:slideUp .23s ease}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:22px 22px 0 0;width:100%;max-width:600px;padding:18px 18px 32px;max-height:88vh;overflow-y:auto;animation:slideUp .23s ease}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .mhandle{width:38px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 14px}
 .mtitle{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;margin-bottom:14px}
@@ -141,7 +141,7 @@ select.fi{appearance:none;cursor:pointer}
 .dpanel{
   position:fixed;
   top:0;right:-100%;
-  width:100%;max-width:430px;
+  width:100%;max-width:600px;
   height:100%;height:100dvh;
   background:var(--bg);
   z-index:250;
@@ -251,7 +251,7 @@ select.fi{appearance:none;cursor:pointer}
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  width:100%;max-width:430px;
+  width:100%;max-width:600px;
   left:50%;transform:translateX(-50%);
   height:100vh;height:100dvh;
   overflow:hidden;
@@ -443,7 +443,7 @@ select.fi{appearance:none;cursor:pointer}
   display:none;
   flex-direction:column;
   align-items:center;justify-content:center;
-  width:100%;max-width:430px;
+  width:100%;max-width:600px;
   left:50%;transform:translateX(-50%);
   height:100vh;height:100dvh;
   opacity:0;
@@ -498,6 +498,61 @@ select.fi{appearance:none;cursor:pointer}
   0%,100%{opacity:.3;transform:scale(1)}
   50%{opacity:1;transform:scale(1.3)}
 }
+/* ═══ SPOTIFY PLAYER ═══ */
+.spotify-wrap{
+  padding:12px 14px 0;
+  position:relative;
+}
+.spotify-bar{
+  background:linear-gradient(135deg,#1a1a20,#111115);
+  border:1px solid #2a2a35;
+  border-radius:14px;
+  overflow:hidden;
+  transition:all .3s ease;
+  position:relative;
+}
+body.light-mode .spotify-bar{
+  background:linear-gradient(135deg,#f0f0eb,#e8e8e2);
+  border-color:#d0d0c8;
+}
+.spotify-bar.minimized{
+  height:52px;
+}
+.spotify-bar.expanded{
+  height:152px;
+}
+.spotify-mini{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;height:52px;cursor:pointer;
+}
+.spotify-mini-icon{
+  width:32px;height:32px;border-radius:50%;
+  background:#1DB954;display:flex;align-items:center;
+  justify-content:center;font-size:16px;flex-shrink:0;
+}
+.spotify-mini-text{
+  flex:1;
+}
+.spotify-mini-title{
+  font-size:12px;font-weight:700;color:var(--text);
+}
+.spotify-mini-sub{
+  font-size:10px;color:var(--text2);margin-top:1px;
+}
+.spotify-toggle{
+  font-size:16px;color:var(--text3);cursor:pointer;padding:4px;
+  transition:.2s;flex-shrink:0;
+}
+.spotify-iframe-wrap{
+  display:none;
+  padding:0 0 0 0;
+}
+.spotify-bar.expanded .spotify-iframe-wrap{
+  display:block;
+}
+.spotify-bar.expanded .spotify-mini{
+  border-bottom:1px solid var(--border);
+}
 /* ═══ TIENDA ═══ */
 .tienda-hero{
   background:linear-gradient(135deg,#0a0a0c 0%,#1a1a20 50%,#0a0a0c 100%);
@@ -520,7 +575,7 @@ select.fi{appearance:none;cursor:pointer}
 .cat-chip{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);color:var(--text2);background:transparent;white-space:nowrap;transition:.15s;font-family:'Outfit',sans-serif}
 .cat-chip.active{background:var(--accent);color:#000;border-color:var(--accent)}
 /* Grid de productos */
-.productos-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:8px 14px 14px}
+.productos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;padding:8px 14px 14px}
 .prod-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:.15s;position:relative}
 .prod-card:active{transform:scale(.97)}
 .prod-img{width:100%;aspect-ratio:1;object-fit:cover;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:48px}
@@ -571,7 +626,7 @@ select.fi{appearance:none;cursor:pointer}
 .qty-btn{width:26px;height:26px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;font-weight:700;color:var(--text);transition:.15s}
 .qty-btn:active{background:var(--accent);color:#000}
 /* ═══ ADMIN PANEL ═══ */
-.admin-panel{position:fixed;inset:0;background:var(--bg);z-index:500;display:none;flex-direction:column;max-width:430px;left:50%;transform:translateX(-50%)}
+.admin-panel{position:fixed;inset:0;background:var(--bg);z-index:500;display:none;flex-direction:column;max-width:600px;left:50%;transform:translateX(-50%)}
 .admin-panel.open{display:flex}
 .admin-hdr{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0;background:rgba(255,92,58,.06)}
 .admin-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--accent2);flex:1}
@@ -589,7 +644,7 @@ select.fi{appearance:none;cursor:pointer}
 .del-btn{width:32px;height:32px;border-radius:8px;background:rgba(255,92,58,.15);border:1px solid rgba(255,92,58,.3);color:var(--accent2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0;transition:.15s}
 .del-btn:active{background:rgba(255,92,58,.3)}
 .edit-btn{width:32px;height:32px;border-radius:8px;background:rgba(232,197,71,.12);border:1px solid rgba(232,197,71,.25);color:var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;flex-shrink:0;transition:.15s}
-.pin-screen{position:fixed;inset:0;background:var(--bg);z-index:600;display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;max-width:430px;left:50%;transform:translateX(-50%)}
+.pin-screen{position:fixed;inset:0;background:var(--bg);z-index:600;display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;max-width:600px;left:50%;transform:translateX(-50%)}
 .pin-screen.open{display:flex}
 .pin-dots{display:flex;gap:12px}
 .pin-dot{width:14px;height:14px;border-radius:50%;background:var(--border);transition:.2s}
@@ -870,6 +925,35 @@ select.fi{appearance:none;cursor:pointer}
           </div>
         </div>
       </div>
+      <!-- SPOTIFY PLAYER -->
+      <div class="spotify-wrap" id="spotify-wrap">
+        <div class="spotify-bar minimized" id="spotify-bar">
+          <!-- Mini bar siempre visible -->
+          <div class="spotify-mini" onclick="toggleSpotify()">
+            <div class="spotify-mini-icon">🎵</div>
+            <div class="spotify-mini-text">
+              <div class="spotify-mini-title">JPRINCE.INK — Playlist</div>
+              <div class="spotify-mini-sub">Toca para escuchar mientras exploras</div>
+            </div>
+            <div class="spotify-toggle" id="spotify-arrow">▾</div>
+          </div>
+          <!-- Iframe expandible -->
+          <div class="spotify-iframe-wrap">
+            <iframe
+              id="spotify-iframe"
+              src=""
+              data-src="https://open.spotify.com/embed/playlist/7knqKgG6RzsoHo5TwMCixU?utm_source=generator&theme=0"
+              width="100%"
+              height="100"
+              frameborder="0"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+              style="border-radius:0 0 14px 14px;display:block">
+            </iframe>
+          </div>
+        </div>
+      </div>
+
       <!-- Filtros categoría -->
       <div class="cat-chips" id="tienda-cats">
         <div class="cat-chip active" onclick="setCat('todos',this)">🛍️ Todo</div>
@@ -3876,6 +3960,36 @@ async function guardarProducto() {
   await renderTiendaAdminProductos();
 }
 
+
+// ═══════════════════════════════
+// SPOTIFY PLAYER
+// ═══════════════════════════════
+let spotifyExpanded = false;
+let spotifyLoaded = false;
+
+function toggleSpotify() {
+  spotifyExpanded = !spotifyExpanded;
+  const bar = document.getElementById('spotify-bar');
+  const arrow = document.getElementById('spotify-arrow');
+
+  if (spotifyExpanded) {
+    bar.classList.remove('minimized');
+    bar.classList.add('expanded');
+    arrow.textContent = '▴';
+    arrow.style.color = '#1DB954';
+    // Cargar iframe solo la primera vez (lazy load)
+    if (!spotifyLoaded) {
+      const iframe = document.getElementById('spotify-iframe');
+      iframe.src = iframe.dataset.src;
+      spotifyLoaded = true;
+    }
+  } else {
+    bar.classList.remove('expanded');
+    bar.classList.add('minimized');
+    arrow.textContent = '▾';
+    arrow.style.color = '';
+  }
+}
 
 // ═══════════════════════════════
 // CATEGORÍAS DINÁMICAS
