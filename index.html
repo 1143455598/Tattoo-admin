@@ -553,6 +553,57 @@ body.light-mode .spotify-bar{
 .spotify-bar.expanded .spotify-mini{
   border-bottom:1px solid var(--border);
 }
+/* ═══ CARRITO BURBUJA ═══ */
+.cart-bubble{
+  position:fixed;
+  width:58px;height:58px;
+  border-radius:50%;
+  background:var(--accent);
+  color:#000;
+  display:none;
+  align-items:center;justify-content:center;
+  font-size:24px;
+  cursor:grab;
+  z-index:500;
+  box-shadow:0 4px 20px rgba(232,197,71,.5);
+  border:none;
+  user-select:none;
+  -webkit-user-select:none;
+  transition:box-shadow .2s, transform .1s;
+  touch-action:none;
+}
+.cart-bubble:active{cursor:grabbing;transform:scale(1.08)}
+.cart-bubble.visible{display:flex}
+.cart-bubble-count{
+  position:absolute;top:-2px;right:-2px;
+  width:20px;height:20px;border-radius:50%;
+  background:var(--accent2);color:#fff;
+  font-size:11px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--bg);
+  pointer-events:none;
+}
+/* ═══ COTIZA BTN ═══ */
+.cotiza-btn{
+  position:fixed;
+  bottom:24px;left:50%;transform:translateX(-50%);
+  background:linear-gradient(135deg,#25D366,#128C7E);
+  color:#fff;
+  border:none;border-radius:30px;
+  padding:13px 28px;
+  font-size:14px;font-weight:700;
+  font-family:'Outfit',sans-serif;
+  cursor:pointer;
+  z-index:499;
+  box-shadow:0 4px 20px rgba(37,211,102,.4);
+  display:none;
+  align-items:center;gap:8px;
+  white-space:nowrap;
+  transition:.2s;
+  letter-spacing:.3px;
+}
+.cotiza-btn:active{transform:translateX(-50%) scale(.96)}
+.cotiza-btn.visible{display:flex}
 /* ═══ TIENDA ═══ */
 .tienda-hero{
   background:linear-gradient(135deg,#0a0a0c 0%,#1a1a20 50%,#0a0a0c 100%);
@@ -989,8 +1040,15 @@ body.light-mode .spotify-bar{
 </div><!-- /app -->
 
 <button class="fab" id="fab" onclick="abrirNuevaCita()">+</button>
-<button class="cart-fab" id="cart-fab" onclick="abrirCarrito()">
-  🛒<div class="cart-count" id="cart-count">0</div>
+
+<!-- Carrito burbuja movible -->
+<div class="cart-bubble" id="cart-bubble">
+  🛒<div class="cart-bubble-count" id="cart-bubble-count">0</div>
+</div>
+
+<!-- Botón cotiza (solo en tienda pública) -->
+<button class="cotiza-btn" id="cotiza-btn" onclick="cotizarWhatsApp()">
+  💬 Cotiza aquí
 </button>
 <div class="toast" id="toast"></div>
 
@@ -1343,14 +1401,15 @@ function goPublico() {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
   document.getElementById('pg-tienda')?.classList.add('active');
-  // Ocultar nav y header
   document.querySelector('.bnav').classList.remove('visible');
   document.getElementById('header').classList.remove('visible');
   document.getElementById('fab').style.display = 'none';
-  const cartFab = document.getElementById('cart-fab');
-  if (cartFab) cartFab.style.display = carritoItems.length > 0 ? 'flex' : 'none';
   document.getElementById('tienda-login-btn').style.display = 'flex';
   document.getElementById('tienda-admin-inline').style.display = 'none';
+  // Mostrar botón cotiza
+  mostrarCotizaBtn(true);
+  // Auto-play Spotify
+  autoPlaySpotify();
 }
 
 function mostrarLoginDesdePublico() {
@@ -1361,9 +1420,12 @@ function mostrarLoginDesdePublico() {
 function volverATiendaPublica() {
   goPublico();
   loadTienda();
+  mostrarCotizaBtn(true);
 }
 
 function activarModoAdmin() {
+  // Ocultar botón cotiza (no necesario para admin)
+  mostrarCotizaBtn(false);
   // Mostrar nav y header
   document.querySelector('.bnav').classList.add('visible');
   document.getElementById('header').classList.add('visible');
@@ -3774,12 +3836,7 @@ function agregarAlCarrito() {
 }
 
 function actualizarCartFab() {
-  const total = carritoItems.reduce((s,i) => s + i.qty, 0);
-  const fab = document.getElementById('cart-fab');
-  const count = document.getElementById('cart-count');
-  count.textContent = total;
-  if (total > 0) fab.classList.add('visible');
-  else fab.classList.remove('visible');
+  actualizarBurbuja();
 }
 
 // ── CARRITO ──
@@ -3969,19 +4026,21 @@ let spotifyLoaded = false;
 
 function toggleSpotify() {
   spotifyExpanded = !spotifyExpanded;
+  aplicarEstadoSpotify();
+}
+
+function aplicarEstadoSpotify() {
   const bar = document.getElementById('spotify-bar');
   const arrow = document.getElementById('spotify-arrow');
-
+  if (!bar) return;
   if (spotifyExpanded) {
     bar.classList.remove('minimized');
     bar.classList.add('expanded');
     arrow.textContent = '▴';
     arrow.style.color = '#1DB954';
-    // Cargar iframe solo la primera vez (lazy load)
     if (!spotifyLoaded) {
       const iframe = document.getElementById('spotify-iframe');
-      iframe.src = iframe.dataset.src;
-      spotifyLoaded = true;
+      if (iframe) { iframe.src = iframe.dataset.src; spotifyLoaded = true; }
     }
   } else {
     bar.classList.remove('expanded');
@@ -3989,6 +4048,119 @@ function toggleSpotify() {
     arrow.textContent = '▾';
     arrow.style.color = '';
   }
+}
+
+function autoPlaySpotify() {
+  // Auto-expandir y cargar al entrar a la página
+  setTimeout(function() {
+    if (!spotifyExpanded) {
+      spotifyExpanded = true;
+      aplicarEstadoSpotify();
+    }
+  }, 1200);
+}
+
+// ═══════════════════════════════
+// CARRITO BURBUJA MOVIBLE
+// ═══════════════════════════════
+(function() {
+  var bubble, isDragging = false, startX, startY, origX, origY, moved = false;
+  var posX = window.innerWidth - 74, posY = window.innerHeight - 160;
+
+  function initBurbuja() {
+    bubble = document.getElementById('cart-bubble');
+    if (!bubble) return;
+
+    // Posición inicial (esquina inferior derecha)
+    posX = window.innerWidth - 74;
+    posY = window.innerHeight - 160;
+    bubble.style.left = posX + 'px';
+    bubble.style.top  = posY + 'px';
+
+    // Touch events
+    bubble.addEventListener('touchstart', function(e) {
+      isDragging = true; moved = false;
+      var t = e.touches[0];
+      startX = t.clientX; startY = t.clientY;
+      origX = posX; origY = posY;
+      bubble.style.transition = 'none';
+      e.preventDefault();
+    }, {passive:false});
+
+    bubble.addEventListener('touchmove', function(e) {
+      if (!isDragging) return;
+      var t = e.touches[0];
+      var dx = t.clientX - startX, dy = t.clientY - startY;
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) moved = true;
+      posX = Math.max(0, Math.min(window.innerWidth - 58, origX + dx));
+      posY = Math.max(0, Math.min(window.innerHeight - 58, origY + dy));
+      bubble.style.left = posX + 'px';
+      bubble.style.top  = posY + 'px';
+      e.preventDefault();
+    }, {passive:false});
+
+    bubble.addEventListener('touchend', function(e) {
+      isDragging = false;
+      bubble.style.transition = '';
+      // Si no se movió, abrir carrito
+      if (!moved) abrirCarrito();
+      // Snap al borde más cercano
+      var cx = posX + 29;
+      posX = cx < window.innerWidth / 2 ? 8 : window.innerWidth - 66;
+      bubble.style.left = posX + 'px';
+    });
+
+    // Mouse events (desktop)
+    bubble.addEventListener('mousedown', function(e) {
+      isDragging = true; moved = false;
+      startX = e.clientX; startY = e.clientY;
+      origX = posX; origY = posY;
+      bubble.style.transition = 'none';
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!isDragging) return;
+      var dx = e.clientX - startX, dy = e.clientY - startY;
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) moved = true;
+      posX = Math.max(0, Math.min(window.innerWidth - 58, origX + dx));
+      posY = Math.max(0, Math.min(window.innerHeight - 58, origY + dy));
+      bubble.style.left = posX + 'px';
+      bubble.style.top  = posY + 'px';
+    });
+    document.addEventListener('mouseup', function() {
+      if (!isDragging) return;
+      isDragging = false;
+      bubble.style.transition = '';
+      if (!moved) abrirCarrito();
+      var cx = posX + 29;
+      posX = cx < window.innerWidth / 2 ? 8 : window.innerWidth - 66;
+      bubble.style.left = posX + 'px';
+    });
+  }
+
+  window.addEventListener('load', initBurbuja);
+})();
+
+function actualizarBurbuja() {
+  var total = carritoItems.reduce(function(s,i){ return s + i.qty; }, 0);
+  var bubble = document.getElementById('cart-bubble');
+  var count  = document.getElementById('cart-bubble-count');
+  if (count) count.textContent = total;
+  // Mostrar burbuja siempre en tienda (con o sin items)
+  var enTienda = document.getElementById('pg-tienda')?.classList.contains('active');
+  if (bubble) bubble.classList.toggle('visible', enTienda && total > 0);
+}
+
+// ═══════════════════════════════
+// BOTÓN COTIZA
+// ═══════════════════════════════
+function cotizarWhatsApp() {
+  var msg = encodeURIComponent('Hola JPrince.ink, vengo de tu página web, quiero cotizar un tatuaje!');
+  window.open('https://wa.me/573022607860?text=' + msg, '_blank');
+}
+
+function mostrarCotizaBtn(visible) {
+  var btn = document.getElementById('cotiza-btn');
+  if (btn) btn.classList.toggle('visible', visible);
 }
 
 // ═══════════════════════════════
