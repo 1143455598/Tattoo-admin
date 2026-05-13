@@ -553,6 +553,85 @@ body.light-mode .spotify-bar{
 .spotify-bar.expanded .spotify-mini{
   border-bottom:1px solid var(--border);
 }
+/* ═══ CINTA LED ═══ */
+@keyframes ledScroll {
+  0%   { transform: translateX(100%) }
+  100% { transform: translateX(-100%) }
+}
+@keyframes ledPulse {
+  0%,100% { opacity:1 }
+  50%      { opacity:.7 }
+}
+@keyframes ledGlow {
+  0%,100% { box-shadow: 0 0 8px rgba(255,80,0,.6), inset 0 0 8px rgba(0,0,0,.4) }
+  50%      { box-shadow: 0 0 18px rgba(255,160,0,.8), inset 0 0 12px rgba(0,0,0,.3) }
+}
+.led-wrap{
+  width:100%;
+  overflow:hidden;
+  background:#0a0a0a;
+  border-top:2px solid #222;
+  border-bottom:2px solid #222;
+  position:relative;
+  display:none; /* oculta por defecto */
+  animation: ledGlow 2s ease-in-out infinite;
+}
+.led-wrap.encendida{ display:block }
+body.light-mode .led-wrap{
+  background:#1a1a1a;
+  border-color:#333;
+}
+/* Puntos LED decorativos en los bordes */
+.led-dots-top, .led-dots-bottom{
+  display:flex;gap:6px;padding:3px 8px;
+  background:#111;
+}
+.led-dot{
+  width:6px;height:6px;border-radius:50%;
+  animation: ledPulse 1s ease-in-out infinite;
+  flex-shrink:0;
+}
+.led-dot:nth-child(odd){ animation-delay:.5s }
+/* Texto corriendo */
+.led-track{
+  padding:6px 0;
+  white-space:nowrap;
+  overflow:hidden;
+  position:relative;
+  background:linear-gradient(180deg, #0d0d0d, #111, #0d0d0d);
+}
+.led-text{
+  display:inline-block;
+  font-family:'Space Mono',monospace;
+  font-size:15px;
+  font-weight:700;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  animation: ledScroll linear infinite;
+  white-space:nowrap;
+  padding-right:80px;
+}
+/* Colores de LED */
+.led-color-rojo   .led-text { color:#ff3030; text-shadow:0 0 8px #ff0000, 0 0 16px #ff000088 }
+.led-color-rojo   .led-dot  { background:#ff3030; box-shadow:0 0 6px #ff0000 }
+.led-color-verde  .led-text { color:#00ff88; text-shadow:0 0 8px #00ff44, 0 0 16px #00ff4488 }
+.led-color-verde  .led-dot  { background:#00ff88; box-shadow:0 0 6px #00ff44 }
+.led-color-azul   .led-text { color:#3399ff; text-shadow:0 0 8px #0066ff, 0 0 16px #0066ff88 }
+.led-color-azul   .led-dot  { background:#3399ff; box-shadow:0 0 6px #0066ff }
+.led-color-dorado .led-text { color:#e8c547; text-shadow:0 0 8px #ffaa00, 0 0 16px #ffaa0088 }
+.led-color-dorado .led-dot  { background:#e8c547; box-shadow:0 0 6px #ffaa00 }
+.led-color-blanco .led-text { color:#ffffff; text-shadow:0 0 8px #ffffff, 0 0 16px #ffffff88 }
+.led-color-blanco .led-dot  { background:#fff; box-shadow:0 0 6px #fff }
+.led-color-arcoiris .led-text {
+  background:linear-gradient(90deg,#ff0000,#ff7700,#ffff00,#00ff00,#0099ff,#cc00ff);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  background-size:200%;
+  animation: ledScroll linear infinite, shimmer 2s linear infinite;
+}
+.led-color-arcoiris .led-dot {
+  background:linear-gradient(135deg,#ff0000,#00ff00,#0099ff);
+  box-shadow:0 0 6px #ffffff88;
+}
 /* ═══ CARRITO BURBUJA ═══ */
 .cart-bubble{
   position:fixed;
@@ -1089,6 +1168,15 @@ body.light-mode .spotify-bar{
           </div>
         </div>
       </div>
+      <!-- CINTA LED -->
+      <div class="led-wrap" id="led-wrap">
+        <div class="led-dots-top" id="led-dots-top"></div>
+        <div class="led-track">
+          <span class="led-text" id="led-text">ES MOMENTO DE TATUARTEEEEE!!!</span>
+        </div>
+        <div class="led-dots-bottom" id="led-dots-bottom"></div>
+      </div>
+
       <!-- SPOTIFY PLAYER -->
       <div class="spotify-wrap" id="spotify-wrap">
         <div class="spotify-bar minimized" id="spotify-bar">
@@ -3607,12 +3695,14 @@ async function adminTab(tab, btn) {
   if (tab === 'clientes') await cargarAdminClientes();
   if (tab === 'usuarios') cargarAdminUsuarios();
   if (tab === 'peligro') {
-    // Sincronizar estado del switch con tema actual
+    // Sincronizar tema
     const isLight = document.body.classList.contains('light-mode');
     const toggle = document.getElementById('theme-toggle');
     if (toggle) toggle.checked = isLight;
     const lbl = document.getElementById('theme-lbl');
     if (lbl) lbl.textContent = isLight ? '☀️ Modo claro' : '🌑 Modo oscuro';
+    // Sincronizar LED
+    initLed();
   }
 }
 
@@ -4184,6 +4274,130 @@ function autoPlaySpotify() {
 }
 
 // ═══════════════════════════════
+// CINTA LED
+// ═══════════════════════════════
+let ledColor = 'dorado';
+
+async function initLed() {
+  try {
+    const { data } = await db.from('configuracion')
+      .select('valor').eq('clave','led').single();
+    if (data && data.valor) {
+      const cfg = JSON.parse(data.valor);
+      aplicarLed(cfg);
+      // Sincronizar controles admin
+      const toggle = document.getElementById('led-toggle');
+      if (toggle) toggle.checked = cfg.encendida;
+      const lbl = document.getElementById('led-estado-lbl');
+      if (lbl) lbl.textContent = cfg.encendida ? '🟢 Encendida' : '🔴 Apagada';
+      const msgInput = document.getElementById('led-mensaje-input');
+      if (msgInput) msgInput.value = cfg.mensaje || '';
+      const vel = document.getElementById('led-velocidad');
+      if (vel) vel.value = cfg.velocidad || '5s';
+      ledColor = cfg.color || 'dorado';
+      actualizarColorOpts(ledColor);
+    }
+  } catch(e) { /* LED no configurada aún */ }
+}
+
+function aplicarLed(cfg) {
+  const wrap = document.getElementById('led-wrap');
+  const texto = document.getElementById('led-text');
+  if (!wrap || !texto) return;
+
+  if (!cfg.encendida) { wrap.classList.remove('encendida'); return; }
+
+  // Encender
+  wrap.classList.add('encendida');
+  texto.textContent = (cfg.mensaje || 'JPRINCE.INK') + ' ★ ' +
+                      (cfg.mensaje || 'JPRINCE.INK') + ' ★ ';
+  texto.style.animationDuration = cfg.velocidad || '5s';
+
+  // Aplicar color
+  wrap.className = 'led-wrap encendida led-color-' + (cfg.color || 'dorado');
+
+  // Generar puntos LED
+  generarPuntos(cfg.color || 'dorado');
+}
+
+function generarPuntos(color) {
+  const colores = {
+    rojo:'#ff3030', verde:'#00ff88', azul:'#3399ff',
+    dorado:'#e8c547', blanco:'#fff', arcoiris:'#e8c547'
+  };
+  const c = colores[color] || '#e8c547';
+  ['led-dots-top','led-dots-bottom'].forEach(function(id) {
+    const wrap = document.getElementById(id);
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    for (let i = 0; i < 40; i++) {
+      const d = document.createElement('div');
+      d.className = 'led-dot';
+      d.style.background = c;
+      d.style.boxShadow = '0 0 4px ' + c;
+      d.style.animationDelay = (i * 0.08) + 's';
+      wrap.appendChild(d);
+    }
+  });
+}
+
+function toggleLed(encendida) {
+  const lbl = document.getElementById('led-estado-lbl');
+  if (lbl) lbl.textContent = encendida ? '🟢 Encendida' : '🔴 Apagada';
+  aplicarConfigLed();
+}
+
+function selColorLed(color, btn) {
+  ledColor = color;
+  actualizarColorOpts(color);
+  aplicarConfigLed();
+}
+
+function actualizarColorOpts(color) {
+  document.querySelectorAll('.led-color-opt').forEach(function(opt) {
+    opt.style.border = opt.dataset.color === color
+      ? '2px solid #fff' : '2px solid transparent';
+    opt.style.transform = opt.dataset.color === color ? 'scale(1.2)' : 'scale(1)';
+  });
+}
+
+function aplicarConfigLed() {
+  const encendida = document.getElementById('led-toggle')?.checked || false;
+  const mensaje = document.getElementById('led-mensaje-input')?.value || 'JPRINCE.INK';
+  const velocidad = document.getElementById('led-velocidad')?.value || '5s';
+  aplicarLed({ encendida, mensaje, color: ledColor, velocidad });
+}
+
+async function guardarLed() {
+  const encendida = document.getElementById('led-toggle')?.checked || false;
+  const mensaje = document.getElementById('led-mensaje-input')?.value.trim() || 'JPRINCE.INK';
+  const velocidad = document.getElementById('led-velocidad')?.value || '5s';
+  const cfg = { encendida, mensaje, color: ledColor, velocidad };
+
+  try {
+    await db.from('configuracion')
+      .upsert([{ clave: 'led', valor: JSON.stringify(cfg) }], { onConflict: 'clave' });
+    showToast('💡 Cinta LED actualizada para todos ✓');
+    // Broadcast en tiempo real
+    db.channel('led-global').send({
+      type: 'broadcast', event: 'led_cambio', payload: cfg
+    });
+  } catch(e) {
+    showToast('Error: ' + e.message, 'err');
+  }
+}
+
+function suscribirLed() {
+  try {
+    db.channel('led-global')
+      .on('broadcast', { event: 'led_cambio' }, function(payload) {
+        if (payload && payload.payload) aplicarLed(payload.payload);
+      })
+      .subscribe();
+  } catch(e) { console.log('LED realtime no disponible'); }
+}
+
+// ═══════════════════════════════
 // CARRITO BURBUJA MOVIBLE
 // ═══════════════════════════════
 (function() {
@@ -4708,6 +4922,10 @@ async function startApp() {
     await initTheme();
     suscribirTema();
 
+    // 2b. Cargar cinta LED
+    await initLed();
+    suscribirLed();
+
     // 3. Init usuarios en BD
     await initUsers();
 
@@ -5031,6 +5249,50 @@ startApp();
 
     <!-- ZONA PELIGROSA -->
     <div id="atab-peligro" style="display:none">
+      <!-- LED ADMIN -->
+      <div class="danger-zone" style="background:var(--card);border-color:var(--border);margin-bottom:10px">
+        <div class="danger-title" style="color:var(--text)">💡 CINTA LED</div>
+        <!-- Encender/Apagar -->
+        <div class="theme-switch-wrap" style="margin-bottom:10px">
+          <div>
+            <div class="theme-switch-lbl" id="led-estado-lbl">🔴 Apagada</div>
+            <div class="theme-switch-sub">Visible para todos los visitantes</div>
+          </div>
+          <label class="tswitch">
+            <input type="checkbox" id="led-toggle" onchange="toggleLed(this.checked)">
+            <span class="tswitch-slider"></span>
+          </label>
+        </div>
+        <!-- Mensaje -->
+        <div class="fg">
+          <label class="fl">Mensaje</label>
+          <input class="fi" id="led-mensaje-input" type="text" placeholder="ES MOMENTO DE TATUARTEEEEE!!!">
+        </div>
+        <!-- Color -->
+        <div class="fg">
+          <label class="fl">Color LED</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px" id="led-colores">
+            <div class="led-color-opt" data-color="rojo"    onclick="selColorLed('rojo',this)"    style="width:36px;height:36px;border-radius:8px;background:#ff3030;cursor:pointer;border:2px solid transparent;box-shadow:0 0 8px #ff000088;transition:.15s"></div>
+            <div class="led-color-opt" data-color="verde"   onclick="selColorLed('verde',this)"   style="width:36px;height:36px;border-radius:8px;background:#00ff88;cursor:pointer;border:2px solid transparent;box-shadow:0 0 8px #00ff4488;transition:.15s"></div>
+            <div class="led-color-opt" data-color="azul"    onclick="selColorLed('azul',this)"    style="width:36px;height:36px;border-radius:8px;background:#3399ff;cursor:pointer;border:2px solid transparent;box-shadow:0 0 8px #0066ff88;transition:.15s"></div>
+            <div class="led-color-opt" data-color="dorado"  onclick="selColorLed('dorado',this)"  style="width:36px;height:36px;border-radius:8px;background:#e8c547;cursor:pointer;border:2px solid transparent;box-shadow:0 0 8px #ffaa0088;transition:.15s"></div>
+            <div class="led-color-opt" data-color="blanco"  onclick="selColorLed('blanco',this)"  style="width:36px;height:36px;border-radius:8px;background:#fff;cursor:pointer;border:2px solid transparent;box-shadow:0 0 8px #ffffff88;transition:.15s"></div>
+            <div class="led-color-opt" data-color="arcoiris" onclick="selColorLed('arcoiris',this)" style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#ff0000,#ffff00,#00ff00,#0099ff,#cc00ff);cursor:pointer;border:2px solid transparent;transition:.15s"></div>
+          </div>
+        </div>
+        <!-- Velocidad -->
+        <div class="fg">
+          <label class="fl">Velocidad</label>
+          <select class="fi" id="led-velocidad" onchange="aplicarConfigLed()">
+            <option value="8s">🐢 Lenta</option>
+            <option value="5s" selected>⚡ Normal</option>
+            <option value="3s">🚀 Rápida</option>
+            <option value="1.5s">💨 Muy rápida</option>
+          </select>
+        </div>
+        <button class="btnp" onclick="guardarLed()">💾 GUARDAR Y PUBLICAR</button>
+      </div>
+
       <div class="danger-zone" style="background:var(--card);border-color:var(--border)">
         <div class="danger-title" style="color:var(--text)">🎨 APARIENCIA</div>
         <div class="theme-switch-wrap">
