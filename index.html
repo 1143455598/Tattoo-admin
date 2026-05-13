@@ -4597,6 +4597,10 @@ async function startApp() {
     // 6. Cargar productos de la tienda
     await loadTienda();
 
+    // 7. Activar modo público — mostrar burbuja, cotiza y spotify
+    mostrarCotizaBtn(true);
+    autoPlaySpotify();
+
   } catch(e) {
     console.error('startApp error:', e);
     document.getElementById('productos-grid').innerHTML =
