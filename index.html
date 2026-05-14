@@ -245,20 +245,22 @@ select.fi{appearance:none;cursor:pointer}
 /* ═══ USUARIOS ═══ */
 .login-screen{
   position:fixed;inset:0;
-  background:var(--bg);
-  z-index:700;
-  display:none; /* oculto por defecto — se muestra solo al pedir login */
+  z-index:900; /* encima de TODO */
+  display:none;
   flex-direction:column;
   align-items:center;
   justify-content:center;
   width:100%;max-width:600px;
   left:50%;transform:translateX(-50%);
   height:100vh;height:100dvh;
-  overflow:hidden;
+  overflow-y:auto;overflow-x:hidden;
   opacity:1;
   transition:opacity .4s ease;
   padding:40px 28px max(40px,env(safe-area-inset-bottom));
-  background:radial-gradient(ellipse at 50% 30%, rgba(232,197,71,.07) 0%, transparent 65%);
+  /* Fondo sólido que tapa completamente la tienda */
+  background:var(--bg);
+  background-image:radial-gradient(ellipse at 50% 30%, rgba(232,197,71,.07) 0%, transparent 65%);
+  -webkit-overflow-scrolling:touch;
 }
 .login-screen.visible{display:flex}
 .login-screen.hiding{opacity:0;pointer-events:none}
@@ -498,6 +500,33 @@ select.fi{appearance:none;cursor:pointer}
   0%,100%{opacity:.3;transform:scale(1)}
   50%{opacity:1;transform:scale(1.3)}
 }
+/* ═══ GALERÍA ═══ */
+.galeria-item{
+  position:relative;aspect-ratio:1;overflow:hidden;cursor:pointer;
+  background:var(--bg3);
+}
+.galeria-item img{width:100%;height:100%;object-fit:cover;transition:.3s}
+.galeria-item:active img{transform:scale(.96)}
+.galeria-item-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(0deg,rgba(0,0,0,.7) 0%,transparent 50%);
+  display:flex;align-items:flex-end;padding:8px;
+  opacity:0;transition:.2s;
+}
+.galeria-item:hover .galeria-item-overlay{opacity:1}
+.galeria-item-lbl{font-size:11px;color:#fff;font-weight:600}
+/* Lightbox */
+.lightbox{
+  position:fixed;inset:0;background:rgba(0,0,0,.95);
+  z-index:800;display:none;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:20px;
+}
+.lightbox.open{display:flex}
+.lightbox img{max-width:100%;max-height:75vh;border-radius:8px;object-fit:contain}
+.lightbox-title{color:#fff;font-size:14px;font-weight:600;margin-top:12px;text-align:center}
+.lightbox-style{color:var(--accent);font-size:12px;margin-top:4px}
+.lightbox-close{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;color:#fff}
 /* ═══ SPOTIFY PLAYER ═══ */
 .spotify-wrap{
   padding:12px 14px 0;
@@ -1093,6 +1122,28 @@ body.light-mode .led-wrap{
 
     </div>
 
+    <!-- GALERÍA -->
+    <div class="page" id="pg-galeria">
+      <div class="tienda-hero" style="padding:20px 18px 16px">
+        <div style="position:relative;z-index:1;text-align:center">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px">GALERÍA DE TRABAJOS</div>
+          <div style="font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-top:2px">JPRINCE.INK</div>
+        </div>
+      </div>
+      <!-- Filtro estilos -->
+      <div class="cat-chips" id="galeria-cats">
+        <div class="cat-chip active" onclick="setGaleriaCat('todos',this)"><span class="chip-emoji">🖼️</span>Todos</div>
+      </div>
+      <!-- Grid galería -->
+      <div id="galeria-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:3px;padding:3px">
+        <div class="empty" style="grid-column:1/-1"><div class="ei">🖼️</div>Sin trabajos aún</div>
+      </div>
+      <!-- Botón subir (solo admin) -->
+      <div id="galeria-admin-btn" style="padding:14px;display:none">
+        <button class="btnp" onclick="abrirSubirFoto()">📷 Subir trabajo</button>
+      </div>
+    </div>
+
     <!-- MÁS -->
     <div class="page" id="pg-mas">
       <div class="stitle">HERRAMIENTAS</div>
@@ -1236,6 +1287,7 @@ body.light-mode .led-wrap{
     <div class="ni" onclick="goPage('clientes')" id="ni-clientes"><div class="ni-i">👥</div><div class="ni-l">Clientes</div></div>
     <div class="ni" onclick="goPage('finanzas')" id="ni-finanzas"><div class="ni-i">💵</div><div class="ni-l">Finanzas</div></div>
     <div class="ni" onclick="goPage('tienda')" id="ni-tienda"><div class="ni-i">🛍️</div><div class="ni-l">Tienda</div></div>
+    <div class="ni" onclick="goPage('galeria')" id="ni-galeria"><div class="ni-i">🖼️</div><div class="ni-l">Galería</div></div>
     <div class="ni" onclick="goPage('mas')" id="ni-mas"><div class="ni-i">⚡</div><div class="ni-l">Más</div></div>
   </nav>
 </div><!-- /app -->
@@ -1625,8 +1677,10 @@ function volverATiendaPublica() {
 }
 
 function activarModoAdmin() {
-  // Ocultar botón cotiza (no necesario para admin)
+  // Ocultar SIEMPRE cotiza en modo admin
   mostrarCotizaBtn(false);
+  const bubble = document.getElementById('cart-bubble');
+  if (bubble) bubble.classList.remove('visible');
   // Mostrar nav y header
   document.querySelector('.bnav').classList.add('visible');
   document.getElementById('header').classList.add('visible');
@@ -1647,12 +1701,19 @@ function goPage(name) {
   document.getElementById('ni-' + name)?.classList.add('active');
   document.querySelector('.content').scrollTop = 0;
   document.getElementById('fab').style.display = name === 'agenda' ? 'flex' : 'none';
-  // Carrito FAB solo en tienda
+  // Carrito FAB y Cotiza solo en tienda pública (sin sesión)
   const cartFab = document.getElementById('cart-fab');
-  if (cartFab) cartFab.style.display = name === 'tienda' && carritoItems.length > 0 ? 'flex' : 'none';
+  if (cartFab) cartFab.style.display = 'none';
+  // Cotiza solo si estamos en tienda Y no hay sesión iniciada
+  if (name === 'tienda' && !currentUser) {
+    mostrarCotizaBtn(true);
+  } else {
+    mostrarCotizaBtn(false);
+  }
   if (name === 'finanzas') loadFinanzas();
   if (name === 'mas') { loadArtists(); loadInventory(); loadTiendaAdmin(); }
   if (name === 'tienda') loadTienda();
+  if (name === 'galeria') loadGaleria();
 }
 
 // ═══════════════════════════════
@@ -3097,8 +3158,8 @@ function showToast(msg, type = '') {
 // ═══════════════════════════════
 // Roles y sus permisos
 const ROLES = {
-  dueno:    { label:'Dueño',      icon:'👑', color:'role-dueno',   perms: ['dashboard','agenda','clientes','finanzas','inventario','artistas','cobros','gastos','citas','tienda','admin'] },
-  socio:    { label:'Socio',      icon:'💼', color:'role-socio',   perms: ['dashboard','agenda','clientes','finanzas','inventario','artistas','cobros','gastos','citas','tienda'] },
+  dueno:    { label:'Dueño',      icon:'👑', color:'role-dueno',   perms: ['dashboard','agenda','clientes','finanzas','inventario','artistas','cobros','gastos','citas','tienda','galeria','galeria','admin'] },
+  socio:    { label:'Socio',      icon:'💼', color:'role-socio',   perms: ['dashboard','agenda','clientes','finanzas','inventario','artistas','cobros','gastos','citas','tienda','galeria'] },
   artista:  { label:'Artista',    icon:'🎨', color:'role-artista', perms: ['dashboard','agenda','cobros','citas','tienda'] },
   lectura:  { label:'Solo lectura',icon:'👁️', color:'role-lectura', perms: ['dashboard','agenda','clientes','finanzas','inventario','tienda'] },
   personalizado: { label:'Personalizado', icon:'⚙️', color:'role-lectura', perms: [] }
@@ -3161,7 +3222,7 @@ async function initUsers() {
       id: 'u_dueno_default',
       nombre: 'Dueño', apellido: '', emoji: '👑',
       password: '1234', rol: 'dueno',
-      perms: ['dashboard','agenda','clientes','finanzas','inventario','artistas','cobros','gastos','citas','tienda','admin'],
+      perms: ['dashboard','agenda','clientes','finanzas','inventario','artistas','cobros','gastos','citas','tienda','galeria','galeria','admin'],
       activo: true
     }]);
   }
@@ -3366,7 +3427,7 @@ async function completarLogin(user) {
 function aplicarPermisos(user) {
   const perms = user.perms || [];
   // Ocultar secciones de nav según permisos
-  const navMap = { dashboard:'ni-dashboard', agenda:'ni-agenda', clientes:'ni-clientes', finanzas:'ni-finanzas', tienda:'ni-tienda' };
+  const navMap = { dashboard:'ni-dashboard', agenda:'ni-agenda', clientes:'ni-clientes', finanzas:'ni-finanzas', tienda:'ni-tienda', galeria:'ni-galeria' };
   Object.entries(navMap).forEach(([perm, navId]) => {
     const el = document.getElementById(navId);
     if (el) el.style.display = perms.includes(perm) ? 'flex' : 'none';
@@ -3949,14 +4010,25 @@ function renderProductos() {
     const imgHTML = p.foto_b64
       ? `<div class="prod-img"><img src="${p.foto_b64}" alt="${p.nombre}"></div>`
       : `<div class="prod-img" style="font-size:52px">${catEmoji(p.categoria)}</div>`;
-    const badge = p.badge ? `<div class="prod-badge ${p.badge === 'nuevo' ? 'nuevo' : ''}">${p.badge === 'nuevo' ? '✨ Nuevo' : p.badge === 'oferta' ? '🔥 Oferta' : '⬛ Agotado'}</div>` : '';
-    return `<div class="prod-card" onclick="abrirDetProd('${p.id}')">
+    const stock = parseInt(p.stock||0);
+    const sinStock = stock === 0;
+    const pocoStock = stock > 0 && stock <= 3;
+    const badgeStock = sinStock ? '<div class="prod-badge" style="background:#555">⬛ Agotado</div>'
+      : p.badge === 'nuevo' ? '<div class="prod-badge nuevo">✨ Nuevo</div>'
+      : p.badge === 'oferta' ? '<div class="prod-badge">🔥 Oferta</div>'
+      : '';
+    const stockLbl = sinStock
+      ? '<div style="font-size:10px;color:var(--accent2);margin-top:3px;font-weight:700">❌ Sin stock</div>'
+      : pocoStock
+      ? '<div style="font-size:10px;color:#ffae00;margin-top:3px;font-weight:700">⚠️ Últimas ' + stock + ' unidades</div>'
+      : '<div style="font-size:10px;color:var(--success);margin-top:3px">✅ Disponible</div>';
+    return `<div class="prod-card${sinStock?' opacity:0.7':''}" onclick="${sinStock?'showToast("Producto agotado","err")':"abrirDetProd('"+p.id+"')"}" style="${sinStock?'opacity:.65':''}">
       ${imgHTML}
-      ${badge}
+      ${badgeStock}
       <div class="prod-body">
         <div class="prod-name">${p.nombre}</div>
         <div class="prod-price">$${parseFloat(p.precio||0).toLocaleString()}</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:2px">${p.categoria||''}</div>
+        ${stockLbl}
       </div>
     </div>`;
   }).join('');
@@ -4501,7 +4573,219 @@ function mostrarCotizaBtn(visible) {
 }
 
 // ═══════════════════════════════
+// PASARELA DE PAGOS
+// ═══════════════════════════════
+let BOLT_LINK = ''; // Se configura desde admin
+let NEQUI_QR  = ''; // Base64 del QR
+
+function pagarBolt() {
+  const total = carritoItems.reduce((s,i) => s + parseFloat(i.producto.precio||0)*i.qty, 0);
+  document.getElementById('bolt-total').textContent = '$' + total.toLocaleString();
+  document.getElementById('bolt-nombre').value = '';
+  openModal('m-bolt');
+}
+
+async function irABolt() {
+  const nombre = document.getElementById('bolt-nombre').value.trim();
+  if (!nombre) { showToast('Escribe tu nombre', 'err'); return; }
+  // Guardar pedido
+  await guardarPedidoDB(nombre, 'bolt');
+  // Actualizar stock
+  await descontarStock();
+  closeModal('m-bolt');
+  closeModal('m-carrito');
+  // Abrir link Bolt
+  const link = BOLT_LINK || 'https://bolt.new';
+  window.open(link, '_blank');
+  carritoItems = [];
+  actualizarCartFab();
+  showToast('¡Redirigiendo a Bolt! ⚡');
+  await loadTienda();
+}
+
+function verQrNequi() {
+  const total = carritoItems.reduce((s,i) => s + parseFloat(i.producto.precio||0)*i.qty, 0);
+  document.getElementById('nequi-total').textContent = '$' + total.toLocaleString();
+  document.getElementById('nequi-nombre').value = '';
+  // Mostrar QR si está configurado
+  const wrap = document.getElementById('nequi-qr-wrap');
+  if (NEQUI_QR) {
+    wrap.innerHTML = '<img src="' + NEQUI_QR + '" style="width:100%;height:100%;object-fit:contain;border-radius:8px">';
+  }
+  openModal('m-nequi');
+}
+
+async function confirmarNequi() {
+  const nombre = document.getElementById('nequi-nombre').value.trim();
+  if (!nombre) { showToast('Escribe tu nombre', 'err'); return; }
+  await guardarPedidoDB(nombre, 'nequi');
+  await descontarStock();
+  closeModal('m-nequi');
+  closeModal('m-carrito');
+  carritoItems = [];
+  actualizarCartFab();
+  showToast('¡Pedido confirmado! Verificaremos tu pago 📱');
+  await loadTienda();
+}
+
+async function guardarPedidoDB(nombre, metodo) {
+  const total = carritoItems.reduce((s,i) => s + parseFloat(i.producto.precio||0)*i.qty, 0);
+  await db.from('pedidos').insert([{
+    cliente_nombre: nombre,
+    items: carritoItems.map(i => ({nombre:i.producto.nombre, talla:i.talla, qty:i.qty, precio:i.producto.precio, id:i.producto.id})),
+    total, metodo_pago: metodo, estado: 'pendiente'
+  }]);
+}
+
+async function descontarStock() {
+  for (const item of carritoItems) {
+    const prod = allProductos.find(p => p.id === item.producto.id);
+    if (!prod) continue;
+    const nuevoStock = Math.max(0, (prod.stock||0) - item.qty);
+    await db.from('productos').update({stock: nuevoStock}).eq('id', item.producto.id);
+  }
+}
+
+// ═══════════════════════════════
+// GALERÍA DE TRABAJOS
+// ═══════════════════════════════
+let galeriaData = [];
+let galeriaCatSel = 'todos';
+
+async function loadGaleria() {
+  const { data } = await db.from('galeria').select('*').order('created_at', {ascending:false});
+  galeriaData = data || [];
+  renderGaleria();
+  // Mostrar btn admin
+  const adminBtn = document.getElementById('galeria-admin-btn');
+  if (adminBtn) adminBtn.style.display = currentUser?.perms?.includes('admin') ? 'block' : 'none';
+  // Generar chips de estilos
+  renderGaleriaCats();
+}
+
+function renderGaleriaCats() {
+  const estilos = [...new Set(galeriaData.map(g => g.estilo).filter(Boolean))];
+  const wrap = document.getElementById('galeria-cats');
+  if (!wrap) return;
+  // Build using createElement to avoid quote conflicts
+  wrap.innerHTML = '';
+  const todoBtn = document.createElement('div');
+  todoBtn.className = 'cat-chip' + (galeriaCatSel === 'todos' ? ' active' : '');
+  todoBtn.innerHTML = '<span class="chip-emoji">🖼️</span>Todos';
+  todoBtn.addEventListener('click', function() { setGaleriaCat('todos', todoBtn); });
+  wrap.appendChild(todoBtn);
+  estilos.forEach(function(e) {
+    const btn = document.createElement('div');
+    btn.className = 'cat-chip' + (galeriaCatSel === e ? ' active' : '');
+    btn.innerHTML = '<span class="chip-emoji">🎨</span>' + e;
+    btn.addEventListener('click', function() { setGaleriaCat(e, btn); });
+    wrap.appendChild(btn);
+  });
+}
+
+function setGaleriaCat(cat, btn) {
+  galeriaCatSel = cat;
+  document.querySelectorAll('#galeria-cats .cat-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGaleria();
+}
+
+function renderGaleria() {
+  const grid = document.getElementById('galeria-grid');
+  if (!grid) return;
+  const lista = galeriaCatSel === 'todos' ? galeriaData :
+    galeriaData.filter(g => g.estilo === galeriaCatSel);
+
+  if (!lista.length) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="ei">🖼️</div>Sin trabajos aún</div>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  lista.forEach(function(g) {
+    const div = document.createElement('div');
+    div.className = 'galeria-item';
+    div.innerHTML = '<img src="' + g.foto_b64 + '" alt="' + (g.titulo||'') + '" loading="lazy">' +
+      '<div class="galeria-item-overlay"><div class="galeria-item-lbl">' + (g.titulo||'') + '</div></div>';
+    div.addEventListener('click', function() { abrirLightbox(g); });
+    // Admin: botón eliminar
+    if (currentUser?.perms?.includes('admin')) {
+      const delBtn = document.createElement('div');
+      delBtn.style.cssText = 'position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;background:rgba(255,92,58,.9);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;z-index:5';
+      delBtn.textContent = '🗑️';
+      delBtn.addEventListener('click', function(e) { e.stopPropagation(); eliminarFotoGaleria(g.id); });
+      div.appendChild(delBtn);
+    }
+    grid.appendChild(div);
+  });
+}
+
+function abrirLightbox(g) {
+  document.getElementById('lightbox-img').src = g.foto_b64;
+  document.getElementById('lightbox-title').textContent = g.titulo || '';
+  document.getElementById('lightbox-style').textContent = g.estilo ? '🎨 ' + g.estilo : '';
+  document.getElementById('lightbox').classList.add('open');
+}
+
+function cerrarLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+
+function abrirSubirFoto() {
+  document.getElementById('galeria-foto-id').value = '';
+  document.getElementById('galeria-foto-b64').value = '';
+  document.getElementById('galeria-foto-input').value = '';
+  document.getElementById('galeria-prev').innerHTML = '🖼️';
+  document.getElementById('galeria-titulo').value = '';
+  openModal('m-galeria-foto');
+}
+
+function cargarFotoGaleria(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new window.Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > MAX) { h = Math.round(h*MAX/w); w = MAX; }
+      if (h > MAX) { w = Math.round(w*MAX/h); h = MAX; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const b64 = canvas.toDataURL('image/jpeg', 0.8);
+      document.getElementById('galeria-foto-b64').value = b64;
+      const prev = document.getElementById('galeria-prev');
+      prev.innerHTML = '<img src="' + b64 + '" style="width:80px;height:80px;border-radius:10px;object-fit:cover">';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function guardarFotoGaleria() {
+  const b64 = document.getElementById('galeria-foto-b64').value;
+  if (!b64) { showToast('Selecciona una foto', 'err'); return; }
+  const titulo = document.getElementById('galeria-titulo').value.trim();
+  const estilo = document.getElementById('galeria-estilo').value;
+  const { error } = await db.from('galeria').insert([{ foto_b64: b64, titulo, estilo }]);
+  if (error) { showToast('Error: ' + error.message, 'err'); return; }
+  closeModal('m-galeria-foto');
+  showToast('¡Trabajo publicado! 🎨');
+  await loadGaleria();
+}
+
+async function eliminarFotoGaleria(id) {
+  if (!confirm('¿Eliminar esta foto?')) return;
+  await db.from('galeria').delete().eq('id', id);
+  showToast('Foto eliminada');
+  await loadGaleria();
+}
+
+// ═══════════════════════════════
 // CATEGORÍAS DINÁMICAS
+
 // ═══════════════════════════════
 let allCategorias = [];
 
@@ -4710,13 +4994,12 @@ async function renderTiendaAdminProductos() {
 async function renderTiendaAdminPedidos() {
   const wrap = document.getElementById('ta-ped-list');
   wrap.innerHTML = '<div class="loader"><div class="spin"></div>Cargando...</div>';
-  const { data } = await db.from('pedidos').select('*').order('created_at', {ascending:false});
+  const { data } = await db.from('pedidos').select('*').order('created_at', {ascending:false}).limit(20);
   if (!data || !data.length) {
     wrap.innerHTML = '<div class="empty"><div class="ei">📋</div>Sin pedidos aún</div>';
     return;
   }
   const estados = {pendiente:'by', completado:'bg', cancelado:'br'};
-
   wrap.innerHTML = '';
   data.forEach(function(p) {
     const div = document.createElement('div');
@@ -4724,7 +5007,7 @@ async function renderTiendaAdminPedidos() {
     const items = (p.items||[]).map(function(i){ return i.qty + 'x ' + i.nombre + ' (' + i.talla + ')'; }).join(', ');
     const fecha = (p.created_at||'').substring(0,10);
     const tel = p.cliente_tel ? ' · ' + p.cliente_tel : '';
-
+    const metodo = p.metodo_pago ? ' · ' + p.metodo_pago : '';
     div.innerHTML =
       '<div style="display:flex;align-items:flex-start;gap:10px">' +
         '<div style="font-size:22px">🛒</div>' +
@@ -4735,15 +5018,15 @@ async function renderTiendaAdminPedidos() {
             '<span class="badge ' + (estados[p.estado]||'by') + '">' + (p.estado||'pendiente') + '</span>' +
             '<span style="font-size:13px;font-weight:700;color:var(--accent)">$' + parseFloat(p.total||0).toLocaleString() + '</span>' +
           '</div>' +
-          '<div style="font-size:10px;color:var(--text3);margin-top:3px">' + fecha + tel + '</div>' +
+          '<div style="font-size:10px;color:var(--text3);margin-top:3px">' + fecha + tel + metodo + '</div>' +
         '</div>' +
-        '<div id="sel-ped-' + p.id + '"></div>' +
+        '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0" id="ped-actions-' + p.id + '"></div>' +
       '</div>';
 
-    // Add select safely
-    const selWrap = div.querySelector('#sel-ped-' + p.id);
+    // Select estado
+    const selWrap = div.querySelector('#ped-actions-' + p.id);
     const sel = document.createElement('select');
-    sel.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;padding:3px 6px;cursor:pointer';
+    sel.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:10px;padding:3px 5px;cursor:pointer;margin-bottom:4px';
     ['pendiente','completado','cancelado'].forEach(function(e) {
       const opt = document.createElement('option');
       opt.value = e; opt.textContent = e.charAt(0).toUpperCase() + e.slice(1);
@@ -4751,10 +5034,66 @@ async function renderTiendaAdminPedidos() {
       sel.appendChild(opt);
     });
     sel.addEventListener('change', function() { cambiarEstadoPedido(p.id, this.value); });
-    selWrap.appendChild(sel);
 
+    // Botón eliminar
+    const delBtn = document.createElement('div');
+    delBtn.className = 'del-btn';
+    delBtn.style.cssText = 'width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer';
+    delBtn.textContent = '🗑️';
+    delBtn.addEventListener('click', function() { eliminarPedido(p.id); });
+
+    selWrap.appendChild(sel);
+    selWrap.appendChild(delBtn);
     wrap.appendChild(div);
   });
+
+  // Botón ver más
+  const { count } = await db.from('pedidos').select('*', {count:'exact', head:true});
+  if (count > 20) {
+    const verMas = document.createElement('button');
+    verMas.className = 'btno';
+    verMas.style.margin = '8px 14px';
+    verMas.textContent = '📋 Ver más pedidos (' + (count - 20) + ' restantes)';
+    verMas.addEventListener('click', function() { renderTodosPedidos(); });
+    wrap.appendChild(verMas);
+  }
+}
+
+async function renderTodosPedidos() {
+  const wrap = document.getElementById('ta-ped-list');
+  wrap.innerHTML = '<div class="loader"><div class="spin"></div>Cargando todos...</div>';
+  const { data } = await db.from('pedidos').select('*').order('created_at', {ascending:false});
+  // Re-render sin límite — reutilizar misma lógica
+  if (!data || !data.length) { wrap.innerHTML = '<div class="empty"><div class="ei">📋</div>Sin pedidos</div>'; return; }
+  // Temporalmente reemplazar data y renderizar
+  const bak = await db.from('pedidos').select('*').order('created_at', {ascending:false}).limit(99999);
+  wrap.innerHTML = '<div style="font-size:12px;color:var(--accent);padding:8px 14px;font-weight:700">Mostrando todos los pedidos (' + data.length + ')</div>';
+  data.forEach(function(p) {
+    const div = document.createElement('div');
+    div.className = 'card card-sm';
+    const items = (p.items||[]).map(function(i){ return i.qty+'x '+i.nombre+' ('+i.talla+')'; }).join(', ');
+    div.innerHTML = '<div style="display:flex;align-items:center;gap:10px">' +
+      '<div>🛒</div>' +
+      '<div style="flex:1">' +
+        '<div style="font-size:13px;font-weight:700">' + (p.cliente_nombre||'—') + '</div>' +
+        '<div style="font-size:11px;color:var(--text2)">' + items + '</div>' +
+        '<div style="font-size:11px;color:var(--accent);margin-top:2px">$' + parseFloat(p.total||0).toLocaleString() + '</div>' +
+      '</div>' +
+      '<div class="del-btn" id="del-p-' + p.id + '">🗑️</div>' +
+    '</div>';
+    div.querySelector('#del-p-' + p.id).addEventListener('click', function() { eliminarPedido(p.id); });
+    wrap.appendChild(div);
+  });
+}
+
+async function eliminarPedido(id) {
+  if (!confirm('¿Eliminar este pedido?')) return;
+  await db.from('pedidos').delete().eq('id', id);
+  showToast('Pedido eliminado ✓');
+  await renderTiendaAdminPedidos();
+  // Actualizar contador
+  const el = document.getElementById('ta-total-pedidos');
+  if (el) el.textContent = Math.max(0, parseInt(el.textContent||'0') - 1);
 }
 
 
@@ -5020,9 +5359,26 @@ startApp();
       <label class="fl">Nota del pedido (opcional)</label>
       <input class="fi" id="pedido-nota" type="text" placeholder="Color preferido, detalles...">
     </div>
-    <button class="btnp" onclick="enviarPedidoWhatsApp()" style="background:#25D366;margin-top:4px">
-      💬 ENVIAR PEDIDO POR WHATSAPP
-    </button>
+    <!-- MÉTODOS DE PAGO -->
+    <div style="margin-top:10px">
+      <label class="fl">Método de pago</label>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+        <!-- WhatsApp -->
+        <button class="btnp" onclick="enviarPedidoWhatsApp()" style="background:#25D366">
+          💬 Pedir por WhatsApp
+        </button>
+        <!-- Bolt link de pago -->
+        <button class="btnp" id="btn-bolt" onclick="pagarBolt()"
+          style="background:linear-gradient(135deg,#6c47ff,#4b2fe8)">
+          ⚡ Pagar con Bolt
+        </button>
+        <!-- Nequi QR -->
+        <button class="btnp" id="btn-nequi" onclick="verQrNequi()"
+          style="background:linear-gradient(135deg,#7c3fe4,#5b2db3)">
+          📱 Pagar con Nequi (QR)
+        </button>
+      </div>
+    </div>
     <button class="btno" onclick="vaciarCarrito()">🗑️ Vaciar carrito</button>
   </div>
 </div>
@@ -5075,6 +5431,101 @@ startApp();
     </div>
     <button class="btnp" onclick="guardarProducto()">GUARDAR PRODUCTO</button>
     <button class="btno" onclick="closeModal('m-producto')">Cancelar</button>
+  </div>
+</div>
+
+<!-- BOLT PAGO -->
+<div class="overlay" id="m-bolt" onclick="closeOut(event,'m-bolt')">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle">⚡ PAGAR CON BOLT</div>
+    <div style="text-align:center;padding:10px 0 16px">
+      <div style="font-size:48px;margin-bottom:10px">⚡</div>
+      <div style="font-size:14px;color:var(--text2);margin-bottom:16px">
+        Serás redirigido al link de pago de Bolt para completar tu compra de forma segura.
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px">
+        <div style="font-size:12px;color:var(--text2)">Total a pagar</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--accent)" id="bolt-total">$0</div>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Tu nombre</label>
+      <input class="fi" id="bolt-nombre" type="text" placeholder="¿Cómo te llamas?">
+    </div>
+    <button class="btnp" onclick="irABolt()"
+      style="background:linear-gradient(135deg,#6c47ff,#4b2fe8)">
+      ⚡ IR AL LINK DE PAGO
+    </button>
+    <button class="btno" onclick="closeModal('m-bolt')">Cancelar</button>
+  </div>
+</div>
+
+<!-- NEQUI QR -->
+<div class="overlay" id="m-nequi" onclick="closeOut(event,'m-nequi')">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle">📱 PAGAR CON NEQUI</div>
+    <div style="text-align:center;padding:10px 0 16px">
+      <div style="font-size:14px;color:var(--text2);margin-bottom:14px">
+        Escanea el QR con tu app Nequi o abre el link de pago
+      </div>
+      <!-- QR placeholder — reemplaza con tu QR real -->
+      <div id="nequi-qr-wrap" style="margin:0 auto 14px;width:180px;height:180px;background:white;border-radius:12px;display:flex;align-items:center;justify-content:center;padding:8px;box-shadow:0 4px 16px rgba(0,0,0,.2)">
+        <div style="font-size:13px;color:#333;text-align:center;padding:10px">
+          📱 Agrega tu QR de Nequi desde el Panel Admin
+        </div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px">
+        <div style="font-size:12px;color:var(--text2)">Total a pagar</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:#7c3fe4" id="nequi-total">$0</div>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Tu nombre (para confirmar)</label>
+      <input class="fi" id="nequi-nombre" type="text" placeholder="¿Cómo te llamas?">
+    </div>
+    <button class="btnp" onclick="confirmarNequi()"
+      style="background:linear-gradient(135deg,#7c3fe4,#5b2db3)">
+      ✅ YA PAGUÉ — CONFIRMAR PEDIDO
+    </button>
+    <button class="btno" onclick="closeModal('m-nequi')">Cancelar</button>
+  </div>
+</div>
+
+<!-- LIGHTBOX GALERÍA -->
+<div class="lightbox" id="lightbox" onclick="cerrarLightbox()">
+  <div class="lightbox-close" onclick="cerrarLightbox()">✕</div>
+  <img id="lightbox-img" src="" alt="">
+  <div class="lightbox-title" id="lightbox-title"></div>
+  <div class="lightbox-style" id="lightbox-style"></div>
+</div>
+
+<!-- SUBIR FOTO GALERÍA (admin) -->
+<div class="overlay" id="m-galeria-foto" onclick="closeOut(event,'m-galeria-foto')">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle" id="m-galeria-title">SUBIR TRABAJO</div>
+    <input type="hidden" id="galeria-foto-id">
+    <div class="fg">
+      <label class="fl">Foto del tatuaje</label>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <div id="galeria-prev" style="width:80px;height:80px;border-radius:10px;background:var(--bg3);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0">🖼️</div>
+        <label class="photo-btn" for="galeria-foto-input">📷 Elegir foto</label>
+        <input type="file" id="galeria-foto-input" accept="image/*" style="display:none" onchange="cargarFotoGaleria(this)">
+      </div>
+      <input type="hidden" id="galeria-foto-b64">
+    </div>
+    <div class="fg"><label class="fl">Título / descripción</label>
+      <input class="fi" id="galeria-titulo" type="text" placeholder="Ej: Manga japonesa, brazo completo">
+    </div>
+    <div class="fg"><label class="fl">Estilo</label>
+      <select class="fi" id="galeria-estilo">
+        <option>Realismo</option><option>Blackwork</option><option>Japonés</option>
+        <option>Acuarela</option><option>Geométrico</option><option>Lettering</option>
+        <option>Neo-tradicional</option><option>Minimalista</option><option>Otro</option>
+      </select>
+    </div>
+    <button class="btnp" onclick="guardarFotoGaleria()">📤 PUBLICAR TRABAJO</button>
+    <button class="btno" onclick="closeModal('m-galeria-foto')">Cancelar</button>
   </div>
 </div>
 
