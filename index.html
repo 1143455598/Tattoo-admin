@@ -3764,6 +3764,8 @@ async function adminTab(tab, btn) {
     if (lbl) lbl.textContent = isLight ? '☀️ Modo claro' : '🌑 Modo oscuro';
     // Sincronizar LED
     initLed();
+    // Cargar config pasarela
+    initPasarela();
   }
 }
 
@@ -4570,6 +4572,66 @@ function cotizarWhatsApp() {
 function mostrarCotizaBtn(visible) {
   var btn = document.getElementById('cotiza-btn');
   if (btn) btn.classList.toggle('visible', visible);
+}
+
+// ═══════════════════════════════
+// CONFIG PASARELA (ADMIN)
+// ═══════════════════════════════
+async function initPasarela() {
+  try {
+    const { data: boltData } = await db.from('configuracion').select('valor').eq('clave','bolt_link').single();
+    if (boltData?.valor) {
+      BOLT_LINK = boltData.valor;
+      const inp = document.getElementById('admin-bolt-link');
+      if (inp) inp.value = boltData.valor;
+    }
+    const { data: nequiData } = await db.from('configuracion').select('valor').eq('clave','nequi_qr').single();
+    if (nequiData?.valor) {
+      NEQUI_QR = nequiData.valor;
+      const prev = document.getElementById('admin-nequi-prev');
+      if (prev && nequiData.valor) {
+        prev.innerHTML = '<img src="' + nequiData.valor + '" style="width:70px;height:70px;border-radius:8px;object-fit:cover">';
+      }
+      const b64inp = document.getElementById('admin-nequi-b64');
+      if (b64inp) b64inp.value = nequiData.valor;
+    }
+  } catch(e) { console.log('Config pasarela no encontrada'); }
+}
+
+async function guardarBoltLink() {
+  const link = document.getElementById('admin-bolt-link')?.value.trim();
+  if (!link) { showToast('Pega el link de Bolt', 'err'); return; }
+  await db.from('configuracion').upsert([{clave:'bolt_link', valor:link}], {onConflict:'clave'});
+  BOLT_LINK = link;
+  showToast('⚡ Link de Bolt guardado ✓');
+}
+
+function cargarQrNequi(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new window.Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 300; canvas.height = 300;
+      canvas.getContext('2d').drawImage(img, 0, 0, 300, 300);
+      const b64 = canvas.toDataURL('image/png', 1.0);
+      document.getElementById('admin-nequi-b64').value = b64;
+      const prev = document.getElementById('admin-nequi-prev');
+      if (prev) prev.innerHTML = '<img src="' + b64 + '" style="width:70px;height:70px;border-radius:8px;object-fit:cover">';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function guardarQrNequi() {
+  const b64 = document.getElementById('admin-nequi-b64')?.value;
+  if (!b64) { showToast('Sube primero el QR de Nequi', 'err'); return; }
+  await db.from('configuracion').upsert([{clave:'nequi_qr', valor:b64}], {onConflict:'clave'});
+  NEQUI_QR = b64;
+  showToast('📱 QR de Nequi guardado ✓');
 }
 
 // ═══════════════════════════════
@@ -5742,6 +5804,42 @@ startApp();
           </select>
         </div>
         <button class="btnp" onclick="guardarLed()">💾 GUARDAR Y PUBLICAR</button>
+      </div>
+
+      <!-- PASARELA DE PAGOS -->
+      <div class="danger-zone" style="background:var(--card);border-color:var(--border);margin-bottom:10px">
+        <div class="danger-title" style="color:var(--text)">💳 PASARELA DE PAGOS</div>
+
+        <!-- BOLT -->
+        <div style="margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#6c47ff,#4b2fe8);display:flex;align-items:center;justify-content:center;font-size:14px">⚡</div>
+            <div style="font-size:13px;font-weight:700">Bolt — Link de pago</div>
+          </div>
+          <div class="fg">
+            <input class="fi" id="admin-bolt-link" type="url" placeholder="https://bolt.new/pay/tu-link...">
+          </div>
+          <button class="btnp" onclick="guardarBoltLink()" style="margin-top:6px">💾 Guardar link Bolt</button>
+        </div>
+
+        <!-- NEQUI -->
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7c3fe4,#5b2db3);display:flex;align-items:center;justify-content:center;font-size:14px">📱</div>
+            <div style="font-size:13px;font-weight:700">Nequi — QR de pago</div>
+          </div>
+          <!-- Preview QR -->
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+            <div id="admin-nequi-prev" style="width:70px;height:70px;border-radius:10px;background:white;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">📱</div>
+            <div>
+              <label class="photo-btn" for="admin-nequi-input">📷 Subir QR Nequi</label>
+              <div style="font-size:10px;color:var(--text3);margin-top:4px">Sube la imagen del QR de tu Nequi</div>
+            </div>
+          </div>
+          <input type="file" id="admin-nequi-input" accept="image/*" style="display:none" onchange="cargarQrNequi(this)">
+          <input type="hidden" id="admin-nequi-b64">
+          <button class="btnp" onclick="guardarQrNequi()" style="background:linear-gradient(135deg,#7c3fe4,#5b2db3)">💾 Guardar QR Nequi</button>
+        </div>
       </div>
 
       <div class="danger-zone" style="background:var(--card);border-color:var(--border)">
