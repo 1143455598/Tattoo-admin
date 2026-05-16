@@ -661,6 +661,96 @@ body.light-mode .led-wrap{
   background:linear-gradient(135deg,#ff0000,#00ff00,#0099ff);
   box-shadow:0 0 6px #ffffff88;
 }
+/* ═══ SORTEOS ═══ */
+.sorteo-btn{
+  background:linear-gradient(135deg,#ff6a00,#ee0979);
+  border:none;border-radius:20px;
+  padding:7px 13px;
+  font-size:11px;font-weight:700;
+  font-family:'Outfit',sans-serif;
+  color:#fff;cursor:pointer;
+  white-space:nowrap;
+  box-shadow:0 2px 10px rgba(238,9,121,.3);
+  transition:.15s;
+  animation:sorteoGlow 2s ease-in-out infinite;
+}
+@keyframes sorteoGlow{
+  0%,100%{box-shadow:0 2px 10px rgba(238,9,121,.3)}
+  50%{box-shadow:0 4px 20px rgba(238,9,121,.6),0 0 30px rgba(255,106,0,.3)}
+}
+.sorteo-btn:active{transform:scale(.94)}
+/* Modal sorteo */
+.sorteo-modal-header{
+  background:linear-gradient(135deg,#1a0a2e,#2d1b69,#1a0a2e);
+  margin:-18px -18px 16px;
+  padding:24px 18px 20px;
+  border-radius:var(--radius) var(--radius) 0 0;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+.sorteo-modal-header::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 0%, rgba(238,9,121,.2) 0%, transparent 70%);
+}
+.sorteo-trophy{
+  font-size:52px;
+  animation:trophyFloat 2s ease-in-out infinite;
+  display:block;margin-bottom:8px;position:relative;z-index:1;
+}
+@keyframes trophyFloat{
+  0%,100%{transform:translateY(0) rotate(-5deg)}
+  50%{transform:translateY(-8px) rotate(5deg)}
+}
+.sorteo-title{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:26px;letter-spacing:3px;
+  color:#fff;position:relative;z-index:1;
+  text-shadow:0 0 20px rgba(238,9,121,.8);
+}
+.sorteo-sub{
+  font-size:11px;color:rgba(255,255,255,.6);
+  letter-spacing:1.5px;text-transform:uppercase;
+  margin-top:4px;position:relative;z-index:1;
+}
+/* Campos sorteo */
+.sorteo-field{
+  width:100%;background:var(--card);
+  border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:12px 14px 12px 42px;
+  font-size:14px;color:var(--text);
+  font-family:'Outfit',sans-serif;
+  outline:none;transition:.2s;
+  -webkit-appearance:none;
+}
+.sorteo-field:focus{border-color:#ee0979;box-shadow:0 0 0 3px rgba(238,9,121,.1)}
+.sorteo-field-wrap{position:relative;margin-bottom:10px}
+.sorteo-field-icon{
+  position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  font-size:16px;pointer-events:none;
+}
+/* Estilos chips en sorteo */
+.estilo-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.estilo-chip{
+  padding:6px 12px;border-radius:16px;font-size:12px;font-weight:600;
+  border:1.5px solid var(--border);color:var(--text2);
+  background:transparent;cursor:pointer;transition:.15s;
+  font-family:'Outfit',sans-serif;
+}
+.estilo-chip.active{
+  background:linear-gradient(135deg,#ff6a00,#ee0979);
+  color:#fff;border-color:transparent;
+}
+/* Inscrito card */
+.inscrito-card{
+  background:linear-gradient(135deg,rgba(238,9,121,.08),rgba(255,106,0,.05));
+  border:1px solid rgba(238,9,121,.25);
+  border-radius:var(--radius);
+  padding:16px;
+  text-align:center;
+  margin-bottom:14px;
+}
 /* ═══ CARRITO BURBUJA ═══ */
 .cart-bubble{
   position:fixed;
@@ -1205,10 +1295,13 @@ body.light-mode .led-wrap{
             <div class="tienda-brand">JPRINCE<span>.</span>INK</div>
             <div class="tienda-sub">Merch oficial del estudio</div>
           </div>
-          <div id="tienda-login-btn"
-            onclick="mostrarLoginDesdePublico()"
-            style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;transition:.15s;white-space:nowrap">
-            🔑 Iniciar sesión
+          <div style="display:flex;gap:7px;align-items:center">
+            <button class="sorteo-btn" onclick="abrirSorteo()">🎰 Sorteos</button>
+            <div id="tienda-login-btn"
+              onclick="mostrarLoginDesdePublico()"
+              style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;transition:.15s;white-space:nowrap">
+              🔑 Iniciar sesión
+            </div>
           </div>
           <div id="tienda-admin-inline" style="display:none;gap:8px;align-items:center">
             <div style="font-size:11px;color:var(--text2)" id="tienda-user-lbl"></div>
@@ -3128,15 +3221,38 @@ async function checkNotifs() {
 // ═══════════════════════════════
 // MODAL HELPERS
 // ═══════════════════════════════
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+// ═══ MODALES CON HISTORIAL ═══
+var modalStack = [];
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  history.pushState({modal:id}, '');
+  modalStack.push(id);
+}
+
+function closeModal(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('open');
+  if (id==='m-prod-det'||id==='m-carrito'||id==='m-sorteo') mostrarCotizaBtn(true);
+  modalStack = modalStack.filter(function(m){return m!==id;});
+}
+
 function closeOut(e, id) {
   if (e.target === document.getElementById(id)) {
-    closeModal(id);
-    // Restaurar botón cotiza si se cierra detalle o carrito
-    if (id === 'm-prod-det' || id === 'm-carrito') mostrarCotizaBtn(true);
+    history.back();
   }
 }
+
+window.addEventListener('popstate', function(e) {
+  if (modalStack.length > 0) {
+    var last = modalStack[modalStack.length - 1];
+    var el = document.getElementById(last);
+    if (el) el.classList.remove('open');
+    if (last==='m-prod-det'||last==='m-carrito'||last==='m-sorteo') mostrarCotizaBtn(true);
+    modalStack.pop();
+  }
+});
 
 // ═══════════════════════════════
 // TOAST
@@ -4575,6 +4691,133 @@ function mostrarCotizaBtn(visible) {
 }
 
 // ═══════════════════════════════
+// SORTEOS
+// ═══════════════════════════════
+let sorteoEditando = false;
+let sorteoInscritoId = null;
+let sorteoInsEdit = false;
+
+const ESTILOS_TATTOO = ['Realismo','Blackwork','Japonés','Acuarela','Geométrico','Minimalista','Lettering','Neo-tradicional'];
+
+function abrirSorteo() {
+  sorteoEditando = false;
+  sorteoInsEdit = false;
+  limpiarFormSorteo();
+  document.getElementById('sorteo-inscrito-wrap').style.display = 'none';
+  document.getElementById('sorteo-form-wrap').style.display = 'block';
+  document.getElementById('sorteo-error').style.display = 'none';
+  mostrarCotizaBtn(false); // ocultar cotiza mientras sorteo está abierto
+  openModal('m-sorteo');
+}
+
+function limpiarFormSorteo() {
+  ['sorteo-instagram','sorteo-whatsapp','sorteo-nombre','sorteo-cumple'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.querySelectorAll('.estilo-chip').forEach(function(c) { c.classList.remove('active'); });
+}
+
+function toggleEstilo(chip) {
+  chip.classList.toggle('active');
+}
+
+function getEstilosSeleccionados() {
+  return Array.from(document.querySelectorAll('.estilo-chip.active')).map(function(c) { return c.textContent; });
+}
+
+async function inscribirSorteo() {
+  const instagram = (document.getElementById('sorteo-instagram').value || '').trim().replace(/^@/, '');
+  const whatsapp  = (document.getElementById('sorteo-whatsapp').value || '').trim();
+  const nombre    = (document.getElementById('sorteo-nombre').value || '').trim();
+  const cumple    = document.getElementById('sorteo-cumple').value || '';
+  const estilos   = getEstilosSeleccionados();
+  const errEl     = document.getElementById('sorteo-error');
+
+  // Validaciones — todos obligatorios
+  if (!instagram) { mostrarErrSorteo('Ingresa tu usuario de Instagram 📸'); document.getElementById('sorteo-instagram').focus(); return; }
+  if (!nombre)    { mostrarErrSorteo('Ingresa tu nombre completo 👤'); document.getElementById('sorteo-nombre').focus(); return; }
+  if (!whatsapp)  { mostrarErrSorteo('Ingresa tu WhatsApp 💬'); document.getElementById('sorteo-whatsapp').focus(); return; }
+  if (!cumple)    { mostrarErrSorteo('Ingresa tu fecha de cumpleaños 🎂'); document.getElementById('sorteo-cumple').focus(); return; }
+  if (estilos.length === 0) { mostrarErrSorteo('Selecciona al menos un estilo de tatuaje 🎨'); return; }
+
+  const igClean = instagram.toLowerCase().replace(/\s/g,'');
+
+  // Verificar si ya existe
+  const { data: existe } = await db.from('clientes')
+    .select('*').ilike('instagram', igClean).limit(1);
+
+  if (existe && existe.length > 0 && !sorteoInsEdit) {
+    // Ya inscrito — mostrar sus datos
+    sorteoInscritoId = existe[0].id;
+    const c = existe[0];
+    document.getElementById('sorteo-inscrito-msg').textContent =
+      '@' + (c.instagram||'') + ' — ' + (c.nombre||'') + ' ' + (c.apellido||'');
+    document.getElementById('sorteo-inscrito-wrap').style.display = 'block';
+    document.getElementById('sorteo-form-wrap').style.display = 'none';
+    // Pre-cargar datos para edición
+    document.getElementById('sorteo-instagram').value = '@' + (c.instagram||'');
+    document.getElementById('sorteo-whatsapp').value = c.telefono || '';
+    document.getElementById('sorteo-nombre').value = (c.nombre||'') + (c.apellido ? ' ' + c.apellido : '');
+    document.getElementById('sorteo-cumple').value = c.fecha_nac || '';
+    // Marcar estilos
+    const estArr = typeof c.estilos === 'string' ? JSON.parse(c.estilos||'[]') : (c.estilos||[]);
+    document.querySelectorAll('.estilo-chip').forEach(function(chip) {
+      chip.classList.toggle('active', estArr.includes(chip.textContent));
+    });
+    return;
+  }
+
+  // Guardar o actualizar
+  const nombreParts = nombre.split(' ');
+  const primerNombre = nombreParts[0];
+  const apellido = nombreParts.slice(1).join(' ') || '';
+
+  const clienteData = {
+    nombre: primerNombre,
+    apellido: apellido,
+    telefono: whatsapp,
+    instagram: igClean,
+    fecha_nac: cumple || null,
+    estilos: JSON.stringify(estilos),
+    origen: 'sorteo',
+    notas: 'Inscrito desde sorteo JPRINCE.INK. Estilos favoritos: ' + estilos.join(', ')
+  };
+
+  let error;
+  if (sorteoInscritoId && sorteoInsEdit) {
+    // Actualizar cliente existente
+    const res = await db.from('clientes').update(clienteData).eq('id', sorteoInscritoId);
+    error = res.error;
+  } else {
+    // Crear nuevo cliente
+    const res = await db.from('clientes').insert([clienteData]);
+    error = res.error;
+  }
+
+  if (error) { mostrarErrSorteo('Error al guardar: ' + error.message); return; }
+
+  // Éxito
+  closeModal('m-sorteo');
+  mostrarCotizaBtn(true);
+  showToast(sorteoInsEdit ? '✅ Datos actualizados correctamente' : '🎉 ¡Inscripción exitosa! Buena suerte 🍀');
+}
+
+function mostrarErrSorteo(msg) {
+  const errEl = document.getElementById('sorteo-error');
+  errEl.textContent = msg;
+  errEl.style.display = 'block';
+  setTimeout(function() { errEl.style.display = 'none'; }, 3000);
+}
+
+function habilitarEdicionSorteo() {
+  sorteoInsEdit = true;
+  document.getElementById('sorteo-inscrito-wrap').style.display = 'none';
+  document.getElementById('sorteo-form-wrap').style.display = 'block';
+  document.getElementById('sorteo-submit-btn').textContent = '💾 ACTUALIZAR MIS DATOS';
+}
+
+// ═══════════════════════════════
 // CONFIG PASARELA (ADMIN)
 // ═══════════════════════════════
 async function initPasarela() {
@@ -5363,6 +5606,97 @@ startApp();
     <div class="welcome-dot"></div>
     <div class="welcome-dot"></div>
     <div class="welcome-dot"></div>
+  </div>
+</div>
+
+<!-- SORTEOS — INSCRIPCIÓN -->
+<div class="overlay" id="m-sorteo" onclick="closeOut(event,'m-sorteo')">
+  <div class="modal" style="padding:18px">
+    <div class="mhandle"></div>
+
+    <!-- Header animado -->
+    <div class="sorteo-modal-header">
+      <span class="sorteo-trophy">🏆</span>
+      <div class="sorteo-title">SORTEOS JPRINCE.INK</div>
+      <div class="sorteo-sub">Inscríbete y participa</div>
+    </div>
+
+    <!-- Vista: inscrito existente -->
+    <div id="sorteo-inscrito-wrap" style="display:none">
+      <div class="inscrito-card">
+        <div style="font-size:32px;margin-bottom:8px">🎉</div>
+        <div style="font-size:15px;font-weight:700;color:#ee0979">¡Ya estás inscrito!</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px" id="sorteo-inscrito-msg">—</div>
+      </div>
+      <div style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:12px">
+        ¿Quieres actualizar tus datos?
+      </div>
+      <button class="btnp" onclick="habilitarEdicionSorteo()"
+        style="background:linear-gradient(135deg,#ff6a00,#ee0979);margin-bottom:8px">
+        ✏️ Actualizar mis datos
+      </button>
+      <button class="btno" onclick="closeModal('m-sorteo');mostrarCotizaBtn(true)">Cerrar</button>
+    </div>
+
+    <!-- Vista: formulario -->
+    <div id="sorteo-form-wrap">
+      <div style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:16px">
+        Completa tus datos para participar en nuestros sorteos exclusivos 🎁
+      </div>
+
+      <!-- Instagram -->
+      <div class="sorteo-field-wrap">
+        <span class="sorteo-field-icon">📸</span>
+        <input class="sorteo-field" id="sorteo-instagram" type="text"
+          placeholder="@tu_usuario_instagram"
+          oninput="this.value=this.value.replace(/[^a-zA-Z0-9._@]/g,'')">
+      </div>
+      <!-- WhatsApp -->
+      <div class="sorteo-field-wrap">
+        <span class="sorteo-field-icon">💬</span>
+        <input class="sorteo-field" id="sorteo-whatsapp" type="tel"
+          placeholder="WhatsApp (ej: 3001234567)">
+      </div>
+      <!-- Nombre -->
+      <div class="sorteo-field-wrap">
+        <span class="sorteo-field-icon">👤</span>
+        <input class="sorteo-field" id="sorteo-nombre" type="text"
+          placeholder="Tu nombre completo">
+      </div>
+      <!-- Cumpleaños -->
+      <div class="sorteo-field-wrap">
+        <span class="sorteo-field-icon">🎂</span>
+        <input class="sorteo-field" id="sorteo-cumple" type="text"
+          placeholder="Fecha de cumpleaños (ej: 15/03/1995)"
+          onfocus="if(this.type==='text'){this.type='date'}"
+          onblur="if(!this.value){this.type='text'}">
+      </div>
+      <!-- Estilos favoritos -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">
+          🎨 Estilo de tatuajes favorito
+        </div>
+        <div class="estilo-chips" id="sorteo-estilos">
+          <div class="estilo-chip" onclick="toggleEstilo(this)">Realismo</div>
+          <div class="estilo-chip" onclick="toggleEstilo(this)">Blackwork</div>
+          <div class="estilo-chip" onclick="toggleEstilo(this)">Japonés</div>
+          <div class="estilo-chip" onclick="toggleEstilo(this)">Acuarela</div>
+          <div class="estilo-chip" onclick="toggleEstilo(this)">Geométrico</div>
+          <div class="estilo-chip" onclick="toggleEstilo(this)">Minimalista</div>
+          <div class="estilo-chip" onclick="toggleEstilo(this)">Lettering</div>
+          <div class="estilo-chip" onclick="toggleEstilo(this)">Neo-tradicional</div>
+        </div>
+      </div>
+
+      <div class="login-error" id="sorteo-error" style="display:none;margin-bottom:8px"></div>
+
+      <button class="btnp" id="sorteo-submit-btn" onclick="inscribirSorteo()"
+        style="background:linear-gradient(135deg,#ff6a00,#ee0979)">
+        🎰 INSCRIBIRME AL SORTEO
+      </button>
+      <button class="btno" onclick="closeModal('m-sorteo');mostrarCotizaBtn(true)">Cancelar</button>
+    </div>
+
   </div>
 </div>
 
