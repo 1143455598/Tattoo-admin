@@ -4716,6 +4716,25 @@ function limpiarFormSorteo() {
     if (el) el.value = '';
   });
   document.querySelectorAll('.estilo-chip').forEach(function(c) { c.classList.remove('active'); });
+  // Reset toggle WA
+  const acepta = document.getElementById('sorteo-acepta');
+  if (acepta) acepta.checked = false;
+  actualizarToggleWA(false);
+}
+
+function toggleAceptaWA() {
+  const cb = document.getElementById('sorteo-acepta');
+  if (!cb) return;
+  cb.checked = !cb.checked;
+  actualizarToggleWA(cb.checked);
+}
+
+function actualizarToggleWA(checked) {
+  const slider = document.getElementById('sorteo-acepta-slider');
+  const knob   = document.getElementById('sorteo-acepta-knob');
+  if (!slider || !knob) return;
+  slider.style.background = checked ? 'linear-gradient(135deg,#ff6a00,#ee0979)' : 'var(--border)';
+  knob.style.transform = checked ? 'translateX(20px)' : 'translateX(0)';
 }
 
 function toggleEstilo(chip) {
@@ -4759,7 +4778,9 @@ async function inscribirSorteo() {
     document.getElementById('sorteo-instagram').value = '@' + (c.instagram||'');
     document.getElementById('sorteo-whatsapp').value = c.telefono || '';
     document.getElementById('sorteo-nombre').value = (c.nombre||'') + (c.apellido ? ' ' + c.apellido : '');
-    document.getElementById('sorteo-cumple').value = c.fecha_nac || '';
+    document.getElementById('sorteo-cumple').value = c.cumpleanos || '';
+    const aceptaEl = document.getElementById('sorteo-acepta');
+    if (aceptaEl) aceptaEl.checked = c.acepta_notificaciones || false;
     // Marcar estilos
     const estArr = typeof c.estilos === 'string' ? JSON.parse(c.estilos||'[]') : (c.estilos||[]);
     document.querySelectorAll('.estilo-chip').forEach(function(chip) {
@@ -4773,15 +4794,19 @@ async function inscribirSorteo() {
   const primerNombre = nombreParts[0];
   const apellido = nombreParts.slice(1).join(' ') || '';
 
+  const acepta = document.getElementById('sorteo-acepta')?.checked || false;
   const clienteData = {
     nombre: primerNombre,
     apellido: apellido,
     telefono: whatsapp,
     instagram: igClean,
-    fecha_nac: cumple || null,
+    cumpleanos: cumple || null,
     estilos: JSON.stringify(estilos),
+    acepta_notificaciones: acepta,
     origen: 'sorteo',
-    notas: 'Inscrito desde sorteo JPRINCE.INK. Estilos favoritos: ' + estilos.join(', ')
+    notas: 'Inscrito vía sorteo JPRINCE.INK.' +
+           (estilos.length ? ' Estilos: ' + estilos.join(', ') + '.' : '') +
+           (acepta ? ' Acepta novedades por WA.' : ' No acepta novedades.')
   };
 
   let error;
@@ -4815,6 +4840,58 @@ function habilitarEdicionSorteo() {
   document.getElementById('sorteo-inscrito-wrap').style.display = 'none';
   document.getElementById('sorteo-form-wrap').style.display = 'block';
   document.getElementById('sorteo-submit-btn').textContent = '💾 ACTUALIZAR MIS DATOS';
+}
+
+// ═══════════════════════════════
+// EXPORTAR INSCRITOS (EXCEL)
+// ═══════════════════════════════
+async function exportarInscritos() {
+  showToast('Preparando Excel... ⏳');
+  try {
+    const { data } = await db.from('clientes')
+      .select('nombre,apellido,telefono,instagram,cumpleanos,estilos,acepta_notificaciones,origen,created_at')
+      .eq('origen','sorteo')
+      .order('created_at', {ascending:false});
+
+    if (!data || !data.length) { showToast('No hay inscritos aún', 'err'); return; }
+
+    // Construir CSV (compatible con Excel)
+    const headers = ['Nombre','Apellido','WhatsApp','Instagram','Cumpleaños','Estilos Favoritos','Acepta Novedades WA','Fecha Inscripción'];
+    const rows = data.map(function(c) {
+      const estilos = (() => { try { return JSON.parse(c.estilos||'[]').join(' | '); } catch(e) { return c.estilos||''; } })();
+      return [
+        c.nombre||'',
+        c.apellido||'',
+        c.telefono||'',
+        c.instagram ? '@'+c.instagram : '',
+        c.cumpleanos||'',
+        estilos,
+        c.acepta_notificaciones ? 'Sí' : 'No',
+        (c.created_at||'').substring(0,10)
+      ];
+    });
+
+    // Generar CSV con BOM para Excel
+    const bom = '﻿';
+    const csv = bom + [headers, ...rows].map(function(row) {
+      return row.map(function(cell) {
+        var s = String(cell).replace(/"/g,'""');
+        return '"' + s + '"';
+      }).join(',');
+        }).join('\n');    // Descargar
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = 'inscritos-sorteos-jprince-' + new Date().toISOString().substring(0,10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✅ Excel descargado (' + data.length + ' inscritos)');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'err');
+  }
 }
 
 // ═══════════════════════════════
@@ -5688,6 +5765,21 @@ startApp();
         </div>
       </div>
 
+      <!-- Autorización WA -->
+      <div style="background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:14px;display:flex;align-items:flex-start;gap:12px">
+        <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;margin-top:1px">
+          <input type="checkbox" id="sorteo-acepta" style="opacity:0;width:0;height:0">
+          <span id="sorteo-acepta-slider" style="position:absolute;inset:0;background:var(--border);border-radius:24px;cursor:pointer;transition:.3s"
+            onclick="toggleAceptaWA()">
+            <span id="sorteo-acepta-knob" style="position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;left:3px;top:3px;transition:.3s;box-shadow:0 1px 4px rgba(0,0,0,.2)"></span>
+          </span>
+        </label>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">📲 Recibir novedades por WhatsApp</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">Acepto recibir promociones, sorteos y noticias de JPRINCE.INK vía WhatsApp</div>
+        </div>
+      </div>
+
       <div class="login-error" id="sorteo-error" style="display:none;margin-bottom:8px"></div>
 
       <button class="btnp" id="sorteo-submit-btn" onclick="inscribirSorteo()"
@@ -6189,6 +6281,18 @@ startApp();
           </label>
         </div>
       </div>
+      <!-- EXPORTAR INSCRITOS SORTEOS -->
+      <div class="danger-zone" style="background:var(--card);border-color:var(--border);margin-bottom:10px">
+        <div class="danger-title" style="color:var(--text)">📊 EXPORTAR INSCRITOS SORTEOS</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">
+          Descarga la base de datos de inscritos en los sorteos en formato Excel (.xlsx)
+        </div>
+        <button class="btnp" onclick="exportarInscritos()"
+          style="background:linear-gradient(135deg,#217346,#1a5c38)">
+          📥 Descargar Excel
+        </button>
+      </div>
+
       <div class="danger-zone">
         <div class="danger-title">🧹 LIMPIAR DATOS DE PRUEBA</div>
         <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Elimina todas las transacciones, citas y clientes de manera permanente. Usa esto solo si llenaste el sistema con datos de prueba.</div>
