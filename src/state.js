@@ -7,4 +7,3 @@ let curCliId = null, curArtId = null, curInvId = null;
 let editCitaId = null;
 let cliTab = 'todos';
 let selEmoji = '🎨';
-const EMOJIS = window.INK_CONSTANTS.emojis;
