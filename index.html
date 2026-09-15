@@ -21,6 +21,7 @@
 <script src="./src/services/artists-service.js"></script>
 <script src="./src/services/inventory-service.js"></script>
 <script src="./src/services/finance-service.js"></script>
+<script src="./src/services/users-service.js"></script>
 <script src="./src/state.js"></script>
 <link rel="stylesheet" href="./src/styles/app.css">
 <!-- CSS extracted from the original inline stylesheet; selectors and values are unchanged. -->
@@ -832,7 +833,7 @@ async function init() {
 
 // ═════���═══════════════════��═════
 // NAVIGATION
-// ══════════════════════════════���
+// ══════════════════════════════�����
 function goPublico() {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
@@ -2399,35 +2400,35 @@ function clearSession() { localStorage.removeItem(SESSION_KEY); }
 
 // ── USUARIOS EN SUPABASE ──
 async function getUsers() {
-  const { data, error } = await db.from('usuarios').select('*').order('nombre');
+  const { data, error } = await window.INK_SERVICES.users.list();
   if (error) { console.error('Error cargando usuarios:', error.message); return []; }
   return data || [];
 }
 
 async function saveUser(userData) {
   // Upsert: crea o actualiza según el id
-  const { error } = await db.from('usuarios').upsert([userData]);
+  const { error } = await window.INK_SERVICES.users.save(userData);
   if (error) throw error;
 }
 
 async function deleteUser(id) {
-  const { error } = await db.from('usuarios').delete().eq('id', id);
+  const { error } = await window.INK_SERVICES.users.remove(id);
   if (error) throw error;
 }
 
 // ── INIT USUARIOS ──
 async function initUsers() {
   // Verificar que exista al menos el dueño por defecto
-  const { data } = await db.from('usuarios').select('id').limit(1);
+  const { data } = await window.INK_SERVICES.users.hasAny();
   if (!data || data.length === 0) {
     // Crear dueño por defecto
-    await db.from('usuarios').insert([{
+    await window.INK_SERVICES.users.createDefault({
       id: 'u_dueno_default',
       nombre: 'Dueño', apellido: '', emoji: '👑',
       password: '1234', rol: 'dueno',
       perms: ['dashboard','agenda','clientes','finanzas','inventario','artistas','cobros','gastos','citas','tienda','galeria','galeria','admin'],
       activo: true
-    }]);
+    });
   }
 }
 
@@ -2885,7 +2886,7 @@ async function getPin() {
   // Lee el PIN del admin desde Supabase (campo admin_pin del usuario dueño logueado)
   if (currentUser && currentUser.admin_pin) return currentUser.admin_pin;
   // Fallback: buscar en BD
-  const { data } = await db.from('usuarios').select('admin_pin').eq('id', currentUser?.id || 'u_dueno_default').single();
+  const { data } = await window.INK_SERVICES.users.getAdminPin(currentUser?.id || 'u_dueno_default');
   return data?.admin_pin || '1234';
 }
 
@@ -3162,7 +3163,7 @@ async function cambiarPin() {
   if (actual !== pinActual) { showToast('PIN actual incorrecto', 'err'); return; }
   if (nuevo.length !== 4 || isNaN(nuevo)) { showToast('El PIN debe ser 4 dígitos', 'err'); return; }
   // Guardar en Supabase
-  const { error } = await db.from('usuarios').update({ admin_pin: nuevo }).eq('id', currentUser.id);
+  const { error } = await window.INK_SERVICES.users.updateAdminPin(currentUser.id, nuevo);
   if (error) { showToast('Error al guardar PIN: ' + error.message, 'err'); return; }
   // Actualizar en memoria
   currentUser.admin_pin = nuevo;
@@ -5601,7 +5602,7 @@ startApp();
     <div class="fg"><label class="fl">Rol</label>
       <select class="fi" id="user-rol" onchange="actualizarPermisosPorRol(this.value)">
         <option value="dueno">👑 Dueño — Acceso total</option>
-        <option value="socio">💼 Socio — Sin panel admin</option>
+        <option value="socio">��� Socio — Sin panel admin</option>
         <option value="artista">🎨 Artista — Solo su agenda y cobros</option>
         <option value="lectura">👁️ Solo lectura — No puede modificar</option>
         <option value="personalizado">⚙️ Personalizado — Elige permisos</option>
