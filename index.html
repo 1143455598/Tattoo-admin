@@ -19,6 +19,7 @@
 <script src="./src/services/clients-service.js"></script>
 <script src="./src/services/appointments-service.js"></script>
 <script src="./src/services/artists-service.js"></script>
+<script src="./src/services/inventory-service.js"></script>
 <script src="./src/state.js"></script>
 <link rel="stylesheet" href="./src/styles/app.css">
 <!-- CSS extracted from the original inline stylesheet; selectors and values are unchanged. -->
@@ -828,7 +829,7 @@ async function init() {
   // Datos se cargan bajo demanda al navegar o al hacer login
 }
 
-// ═════════════════════════��═════
+// ═════���═══════════════════��═════
 // NAVIGATION
 // ══════════════════════════════���
 function goPublico() {
@@ -945,7 +946,7 @@ async function loadDashboard() {
   }
 
   // Stock alert
-  const { data: inv } = await db.from('inventario').select('nombre,stock,stock_minimo');
+  const { data: inv } = await window.INK_SERVICES.inventory.listSummary();
   const bajos = (inv || []).filter(i => i.stock <= (i.stock_minimo || 5));
   const al = document.getElementById('d-stock-alert');
   if (bajos.length) {
@@ -1345,7 +1346,7 @@ function actualizarEmojiPicker() {
 // INVENTARIO
 // ═══════════════════════════════
 async function loadInventory() {
-  const { data } = await db.from('inventario').select('*').order('nombre');
+  const { data } = await window.INK_SERVICES.inventory.list();
   allInventory = data || [];
   renderInventory();
 }
@@ -1443,7 +1444,7 @@ function editarInsumo() {
 
 async function eliminarInsumo() {
   if (!curInvId || !confirm('¿Eliminar este insumo?')) return;
-  await db.from('inventario').delete().eq('id', curInvId);
+  await window.INK_SERVICES.inventory.remove(curInvId);
   closePanel('dp-inv');
   showToast('Insumo eliminado');
   loadInventory();
@@ -2138,7 +2139,7 @@ async function guardarGasto() {
     const item = allInventory.find(x => x.id === invId);
     if (item) {
       const nuevoStock = item.stock + invQty;
-      const { error: invError } = await db.from('inventario').update({ stock: nuevoStock }).eq('id', invId);
+      const { error: invError } = await window.INK_SERVICES.inventory.updateStock(invId, nuevoStock);
       if (invError) { showToast('Gasto guardado pero error en inventario: ' + invError.message, 'err'); }
       else { showToast(`Gasto registrado ✓ · Inventario +${invQty} unidades`); }
     }
@@ -2191,9 +2192,7 @@ async function guardarInsumo() {
     precio_unitario: parseFloat(document.getElementById('inv-precio').value) || 0
   };
   if (!data.nombre) { showToast('El nombre es obligatorio', 'err'); return; }
-  const { error } = id
-    ? await db.from('inventario').update(data).eq('id', id)
-    : await db.from('inventario').insert([data]);
+  const { error } = await window.INK_SERVICES.inventory.save(id, data);
   if (error) { showToast('Error: ' + error.message, 'err'); return; }
   closeModal('m-inv');
   showToast(id ? 'Insumo actualizado ✓' : 'Insumo registrado ✓');
@@ -2212,7 +2211,7 @@ async function guardarMovimiento() {
   const item = allInventory.find(x => x.id === invId);
   if (!item) return;
   const nuevoStock = tipo === 'entrada' ? item.stock + qty : Math.max(0, item.stock - qty);
-  const { error } = await db.from('inventario').update({ stock: nuevoStock }).eq('id', invId);
+  const { error } = await window.INK_SERVICES.inventory.updateStock(invId, nuevoStock);
   if (error) { showToast('Error: ' + error.message, 'err'); return; }
   closeModal('m-mov');
   showToast(`${tipo === 'entrada' ? 'Entrada' : 'Salida'} registrada ✓`);
@@ -2285,7 +2284,7 @@ async function scheduleReminders() {
       icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🖋️</text></svg>'
     }), 2000);
   }
-  const { data: inv } = await db.from('inventario').select('nombre,stock,stock_minimo');
+  const { data: inv } = await window.INK_SERVICES.inventory.listSummary();
   const bajos = (inv || []).filter(i => i.stock <= (i.stock_minimo || 5));
   if (bajos.length) {
     setTimeout(() => new Notification('INK STUDIO ⚠️', {
@@ -2871,7 +2870,7 @@ function agregarBotonSesionHeader() {
 
 // ════════��════════════════════���═
 // ADMIN PANEL
-// ══���════════════════════════════
+// ══���═════════════��══════════════
 // PIN del admin se guarda en Supabase (campo admin_pin de la tabla usuarios)
 let adminPinBuffer = '';
 let adminTxFiltro = 'todos';
