@@ -17,6 +17,7 @@
 <script src="./src/config.js"></script>
 <script src="./src/supabase-client.js"></script>
 <script src="./src/services/clients-service.js"></script>
+<script src="./src/services/appointments-service.js"></script>
 <script src="./src/state.js"></script>
 <link rel="stylesheet" href="./src/styles/app.css">
 <!-- CSS extracted from the original inline stylesheet; selectors and values are unchanged. -->
@@ -910,7 +911,7 @@ async function loadDashboard() {
   const mes = today.substring(0, 7);
 
   const [{ data: citas }, { data: txHoy }, { data: txMes }, { count }] = await Promise.all([
-    db.from('citas').select('*').eq('fecha', today).order('hora'),
+    window.INK_SERVICES.appointments.listByDate(today),
     db.from('transacciones').select('monto').eq('tipo', 'ingreso').eq('fecha', today),
     db.from('transacciones').select('monto,fecha').eq('tipo', 'ingreso'),
     db.from('clientes').select('*', { count: 'exact', head: true })
@@ -965,7 +966,7 @@ function ebadge(e) {
 // CALENDAR
 // ═══════════════════════════════
 async function buildCalendar() {
-  const { data } = await db.from('citas').select('fecha');
+  const { data } = await window.INK_SERVICES.appointments.listDates();
   calApptDates = new Set((data || []).map(c => c.fecha));
   renderCal();
 }
@@ -1009,7 +1010,7 @@ function selectDay(dt, iso) {
 async function loadCalAppts(iso) {
   const wrap = document.getElementById('cal-appts');
   wrap.innerHTML = '<div class="loader"><div class="spin"></div>Cargando...</div>';
-  const { data } = await db.from('citas').select('*').eq('fecha', iso).order('hora');
+  const { data } = await window.INK_SERVICES.appointments.listByDate(iso);
   if (!data || !data.length) { wrap.innerHTML = '<div class="empty"><div class="ei">📅</div>Sin citas este día</div>'; return; }
   const cols = ['var(--accent3)', 'var(--accent2)', 'var(--success)', 'var(--accent)'];
   wrap.innerHTML = data.map((c, i) => `
@@ -1043,7 +1044,7 @@ async function checkConflicto() {
   if (!fecha || !hora || !artista || !dur) { warn.style.display = 'none'; return; }
   const [h, m] = hora.split(':').map(Number);
   const sMin = h * 60 + m, eMin = sMin + dur * 60;
-  const { data } = await db.from('citas').select('id,hora,duracion,artista_nombre').eq('fecha', fecha).eq('artista_nombre', artista).neq('estado', 'Cancelada');
+  const { data } = await window.INK_SERVICES.appointments.listByArtistAndDate(artista, fecha);
   const conflicts = (data || []).filter(c => {
     if (editCitaId && c.id === editCitaId) return false;
     const [ch, cm] = (c.hora || '00:00').split(':').map(Number);
@@ -1104,7 +1105,7 @@ async function openCliDetalle(id) {
   const c = allClients.find(x => x.id === id);
   if (!c) return;
   document.getElementById('dp-cli-t').textContent = (c.nombre + ' ' + (c.apellido || '')).toUpperCase();
-  const { data: citas } = await db.from('citas').select('*').ilike('cliente_nombre', c.nombre + '%').order('fecha', { ascending: false });
+  const { data: citas } = await window.INK_SERVICES.appointments.listByClientName(c.nombre);
   const { data: cobros } = await db.from('transacciones').select('monto').eq('tipo', 'ingreso').ilike('cliente_nombre', c.nombre + '%');
   const total = (cobros || []).reduce((s, t) => s + parseFloat(t.monto || 0), 0);
   const ini = ((c.nombre || '?')[0] + ((c.apellido || '?')[0])).toUpperCase();
@@ -1221,7 +1222,7 @@ async function openArtDetalle(id) {
   if (!a) return;
   document.getElementById('dp-art-t').textContent = a.nombre.toUpperCase();
   const { data: cobros } = await db.from('transacciones').select('monto').eq('tipo', 'ingreso').eq('artista_nombre', a.nombre);
-  const { data: citas } = await db.from('citas').select('*').eq('artista_nombre', a.nombre).order('fecha', { ascending: false });
+  const { data: citas } = await window.INK_SERVICES.appointments.listByArtistName(a.nombre);
   const totalGen = (cobros || []).reduce((s, t) => s + parseFloat(t.monto || 0), 0);
   const com = Math.round(totalGen * (a.comision || 35) / 100);
   const foto = a.foto_b64;
@@ -1907,7 +1908,7 @@ function abrirNuevaCita() {
 }
 
 async function abrirEditarCita(id) {
-  const { data: c } = await db.from('citas').select('*').eq('id', id).single();
+  const { data: c } = await window.INK_SERVICES.appointments.get(id);
   if (!c) return;
   editCitaId = id;
   document.getElementById('m-cita-t').textContent = 'EDITAR CITA';
@@ -1943,8 +1944,8 @@ async function guardarCita() {
   };
   if (!data.cliente_nombre || !data.fecha || !data.hora) { showToast('Completa cliente, fecha y hora', 'err'); return; }
   const { error } = editCitaId
-    ? await db.from('citas').update(data).eq('id', editCitaId)
-    : await db.from('citas').insert([data]);
+    ? await window.INK_SERVICES.appointments.update(editCitaId, data)
+    : await window.INK_SERVICES.appointments.create(data);
   if (error) { showToast('Error: ' + error.message, 'err'); return; }
   closeModal('m-cita');
   showToast(editCitaId ? 'Cita actualizada ✓' : 'Cita agendada ✓');
@@ -2278,7 +2279,7 @@ async function scheduleReminders() {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
   const iso = tomorrow.toISOString().split('T')[0];
-  const { data: citas } = await db.from('citas').select('*').eq('fecha', iso).neq('estado', 'Cancelada');
+  const { data: citas } = await window.INK_SERVICES.appointments.listUpcoming(iso);
   if (citas && citas.length > 0) {
     setTimeout(() => new Notification('INK STUDIO 📅', {
       body: `Tienes ${citas.length} cita(s) mañana`,
@@ -2869,7 +2870,7 @@ function agregarBotonSesionHeader() {
   av.addEventListener('touchend', () => clearTimeout(pressTimer));
 }
 
-// ═════════════════════════════���═
+// ════════��════════════════════���═
 // ADMIN PANEL
 // ═══════════════════════════════
 // PIN del admin se guarda en Supabase (campo admin_pin de la tabla usuarios)
@@ -3024,7 +3025,7 @@ async function eliminarTx(id, nombre) {
 async function cargarAdminCitas() {
   const wrap = document.getElementById('admin-cita-list');
   wrap.innerHTML = '<div class="loader"><div class="spin"></div>Cargando...</div>';
-  const { data } = await db.from('citas').select('*').order('fecha', { ascending: false });
+  const { data } = await window.INK_SERVICES.appointments.listAll();
   adminCitaData = data || [];
   renderAdminCitas();
 }
@@ -3059,7 +3060,7 @@ function renderAdminCitas() {
 }
 
 async function cambiarEstadoCita(id, estado) {
-  const { error } = await db.from('citas').update({ estado }).eq('id', id);
+  const { error } = await window.INK_SERVICES.appointments.updateStatus(id, estado);
   if (error) { showToast('Error: ' + error.message, 'err'); return; }
   showToast('Estado actualizado ✓');
   await buildCalendar();
@@ -3068,7 +3069,7 @@ async function cambiarEstadoCita(id, estado) {
 
 async function eliminarCitaAdmin(id, nombre) {
   if (!confirm('¿Eliminar cita de "' + nombre + '"?')) return;
-  const { error } = await db.from('citas').delete().eq('id', id);
+  const { error } = await window.INK_SERVICES.appointments.remove(id);
   if (error) { showToast('Error: ' + error.message, 'err'); return; }
   showToast('Cita eliminada ✓');
   await cargarAdminCitas();
@@ -3123,7 +3124,7 @@ async function limpiarTransacciones() {
 async function limpiarCitas() {
   if (!confirm('⚠️ ESTO ELIMINARÁ TODAS LAS CITAS PERMANENTEMENTE.\n\n¿Estás seguro?')) return;
   if (!confirm('Última oportunidad — ¿confirmas?')) return;
-  const { error } = await db.from('citas').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  const { error } = await window.INK_SERVICES.appointments.removeAll();
   if (error) { showToast('Error: ' + error.message, 'err'); return; }
   showToast('Todas las citas eliminadas ✓');
   await cargarAdminCitas();
@@ -3226,7 +3227,7 @@ function renderProductos() {
     const stockLbl = sinStock
       ? '<div style="font-size:10px;color:var(--accent2);margin-top:3px;font-weight:700">❌ Sin stock</div>'
       : pocoStock
-      ? '<div style="font-size:10px;color:#ffae00;margin-top:3px;font-weight:700">⚠️ Últimas ' + stock + ' unidades</div>'
+      ? '<div style="font-size:10px;color:#ffae00;margin-top:3px;font-weight:700">⚠��� Últimas ' + stock + ' unidades</div>'
       : '<div style="font-size:10px;color:var(--success);margin-top:3px">✅ Disponible</div>';
     return `<div class="prod-card${sinStock?' opacity:0.7':''}" onclick="${sinStock?'showToast("Producto agotado","err")':"abrirDetProd('"+p.id+"')"}" style="${sinStock?'opacity:.65':''}">
       ${imgHTML}
