@@ -18,6 +18,7 @@
 <script src="./src/supabase-client.js"></script>
 <script src="./src/services/clients-service.js"></script>
 <script src="./src/services/appointments-service.js"></script>
+<script src="./src/services/artists-service.js"></script>
 <script src="./src/state.js"></script>
 <link rel="stylesheet" href="./src/styles/app.css">
 <!-- CSS extracted from the original inline stylesheet; selectors and values are unchanged. -->
@@ -827,7 +828,7 @@ async function init() {
   // Datos se cargan bajo demanda al navegar o al hacer login
 }
 
-// ═══════════════════════════════
+// ═════════════════════════��═════
 // NAVIGATION
 // ══════════════════════════════���
 function goPublico() {
@@ -1187,7 +1188,7 @@ async function eliminarCliente() {
 // ARTISTAS
 // ═════════════════════���═════════
 async function loadArtists() {
-  const { data } = await db.from('artistas').select('*').eq('activo', true).order('nombre');
+  const { data } = await window.INK_SERVICES.artists.list();
   allArtists = data || [];
   renderArtists();
   llenarSelects();
@@ -1300,7 +1301,7 @@ function editarArtista() {
 
 async function eliminarArtista() {
   if (!curArtId || !confirm('¿Desactivar este artista?')) return;
-  await db.from('artistas').update({ activo: false }).eq('id', curArtId);
+  await window.INK_SERVICES.artists.remove(curArtId);
   closePanel('dp-art');
   showToast('Artista desactivado');
   loadArtists();
@@ -2167,9 +2168,7 @@ async function guardarArtista() {
     activo: true
   };
   if (!data.nombre) { showToast('El nombre es obligatorio', 'err'); return; }
-  const { error } = id
-    ? await db.from('artistas').update(data).eq('id', id)
-    : await db.from('artistas').insert([data]);
+  const { error } = await window.INK_SERVICES.artists.save(id, data);
   if (error) { showToast('Error: ' + error.message, 'err'); return; }
   closeModal('m-art');
   showToast(id ? 'Artista actualizado ✓' : 'Artista registrado ✓');
@@ -2872,7 +2871,7 @@ function agregarBotonSesionHeader() {
 
 // ════════��════════════════════���═
 // ADMIN PANEL
-// ═══════════════════════════════
+// ══���════════════════════════════
 // PIN del admin se guarda en Supabase (campo admin_pin de la tabla usuarios)
 let adminPinBuffer = '';
 let adminTxFiltro = 'todos';
@@ -4693,7 +4692,7 @@ async function eliminarFotoGaleria(id) {
 // ════════��══════════════════════
 // CATEGORÍAS DINÁMICAS
 
-// ═══════════════════════════════
+// ════════════════��══════════════
 let allCategorias = [];
 
 const CAT_DEFAULT = [
