@@ -20,6 +20,7 @@
 <script src="./src/services/appointments-service.js"></script>
 <script src="./src/services/artists-service.js"></script>
 <script src="./src/services/inventory-service.js"></script>
+<script src="./src/services/finance-service.js"></script>
 <script src="./src/state.js"></script>
 <link rel="stylesheet" href="./src/styles/app.css">
 <!-- CSS extracted from the original inline stylesheet; selectors and values are unchanged. -->
@@ -914,8 +915,8 @@ async function loadDashboard() {
 
   const [{ data: citas }, { data: txHoy }, { data: txMes }, { count }] = await Promise.all([
     window.INK_SERVICES.appointments.listByDate(today),
-    db.from('transacciones').select('monto').eq('tipo', 'ingreso').eq('fecha', today),
-    db.from('transacciones').select('monto,fecha').eq('tipo', 'ingreso'),
+    window.INK_SERVICES.finance.listIncomeForDate(today),
+    window.INK_SERVICES.finance.listIncome(),
     db.from('clientes').select('*', { count: 'exact', head: true })
   ]);
 
@@ -1108,7 +1109,7 @@ async function openCliDetalle(id) {
   if (!c) return;
   document.getElementById('dp-cli-t').textContent = (c.nombre + ' ' + (c.apellido || '')).toUpperCase();
   const { data: citas } = await window.INK_SERVICES.appointments.listByClientName(c.nombre);
-  const { data: cobros } = await db.from('transacciones').select('monto').eq('tipo', 'ingreso').ilike('cliente_nombre', c.nombre + '%');
+  const { data: cobros } = await window.INK_SERVICES.finance.listIncomeByClient(c.nombre);
   const total = (cobros || []).reduce((s, t) => s + parseFloat(t.monto || 0), 0);
   const ini = ((c.nombre || '?')[0] + ((c.apellido || '?')[0])).toUpperCase();
   document.getElementById('dp-cli-b').innerHTML = `
@@ -1223,7 +1224,7 @@ async function openArtDetalle(id) {
   const a = allArtists.find(x => x.id === id);
   if (!a) return;
   document.getElementById('dp-art-t').textContent = a.nombre.toUpperCase();
-  const { data: cobros } = await db.from('transacciones').select('monto').eq('tipo', 'ingreso').eq('artista_nombre', a.nombre);
+  const { data: cobros } = await window.INK_SERVICES.finance.listIncomeByArtist(a.nombre);
   const { data: citas } = await window.INK_SERVICES.appointments.listByArtistName(a.nombre);
   const totalGen = (cobros || []).reduce((s, t) => s + parseFloat(t.monto || 0), 0);
   const com = Math.round(totalGen * (a.comision || 35) / 100);
@@ -1498,7 +1499,7 @@ function trend(actual, anterior) {
 // MAIN LOAD
 async function loadFinanzas() {
   // Traer TODAS las transacciones una sola vez
-  const { data, error } = await db.from('transacciones').select('*').order('fecha', {ascending:true});
+  const { data, error } = await window.INK_SERVICES.finance.list();
   if (error) {
     const msg = error?.message || error?.details || JSON.stringify(error) || 'Error desconocido';
     showToast('Error finanzas: ' + msg.substring(0, 50), 'err');
@@ -2007,7 +2008,7 @@ async function guardarCobro() {
     categoria: 'Servicio'
   };
   if (!data.monto) { showToast('Ingresa el monto', 'err'); return; }
-  const { error } = await db.from('transacciones').insert([data]);
+  const { error } = await window.INK_SERVICES.finance.create(data);
   if (error) { showToast('Error: ' + error.message, 'err'); return; }
   closeModal('m-cobro');
   showToast('Cobro registrado ✓');
@@ -2976,7 +2977,7 @@ async function adminTab(tab, btn) {
 async function cargarAdminTx() {
   const wrap = document.getElementById('admin-tx-list');
   wrap.innerHTML = '<div class="loader"><div class="spin"></div>Cargando...</div>';
-  const { data } = await db.from('transacciones').select('*').order('fecha', { ascending: false });
+  const { data } = await window.INK_SERVICES.finance.listRecent();
   adminTxData = data || [];
   renderAdminTx();
 }
@@ -3011,7 +3012,7 @@ function renderAdminTx() {
 
 async function eliminarTx(id, nombre) {
   if (!confirm('¿Eliminar "' + nombre + '"?')) return;
-  const { error } = await db.from('transacciones').delete().eq('id', id);
+  const { error } = await window.INK_SERVICES.finance.remove(id);
   if (error) { showToast('Error: ' + error.message, 'err'); return; }
   showToast('Transacción eliminada ✓');
   await cargarAdminTx();
