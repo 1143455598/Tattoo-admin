@@ -15,6 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./src/config.js"></script>
+<script src="./src/supabase-client.js"></script>
 <script src="./src/state.js"></script>
 <link rel="stylesheet" href="./src/styles/app.css">
 <!-- CSS extracted from the original inline stylesheet; selectors and values are unchanged. -->
@@ -802,13 +803,7 @@
 // SUPABASE
 // ═══════════════════════════════
 const { supabaseUrl: SB_URL, supabaseKey: SB_KEY } = window.INK_CONFIG;
-const db = supabase.createClient(SB_URL, SB_KEY, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionFromUrl: false
-  }
-});
+const db = window.INK_DB;
 
 // State is loaded from src/state.js to preserve the existing global names.
 
