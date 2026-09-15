@@ -14,6 +14,7 @@
 <title>INK STUDIO</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./src/config.js"></script>
 <link rel="stylesheet" href="./src/styles/app.css">
 <!-- CSS extracted from the original inline stylesheet; selectors and values are unchanged. -->
 
@@ -799,8 +800,7 @@
 // ═══════════════════════════════
 // SUPABASE
 // ═══════════════════════════════
-const SB_URL = 'https://otqztntflvitwsfpvggi.supabase.co';
-const SB_KEY = 'sb_publishable_gyurh3a2lF5QgQXhfi1XTQ_P_Dk7mT0';
+const { supabaseUrl: SB_URL, supabaseKey: SB_KEY } = window.INK_CONFIG;
 const db = supabase.createClient(SB_URL, SB_KEY, {
   auth: {
     persistSession: false,
@@ -819,7 +819,7 @@ let curCliId = null, curArtId = null, curInvId = null;
 let editCitaId = null;
 let cliTab = 'todos';
 let selEmoji = '🎨';
-const EMOJIS = ['🎨','🔥','💀','🌙','⚡','🐉','🌹','🖋️','🗡️','🦋','🕊️','🌊','👁️','🔮','💎','🐍','🦅','🌺','🏴','🎭'];
+const EMOJIS = window.INK_CONSTANTS.emojis;
 
 // ═══════════════════════════════
 // INIT
@@ -1197,7 +1197,7 @@ async function eliminarCliente() {
 
 // ═══════════════════════════════
 // ARTISTAS
-// ═══════════════════════════════
+// ═════════════════════���═════════
 async function loadArtists() {
   const { data } = await db.from('artistas').select('*').eq('activo', true).order('nombre');
   allArtists = data || [];
@@ -2262,7 +2262,7 @@ function cerrarDrop(dropId) {
   document.getElementById(dropId)?.classList.remove('open');
 }
 
-// ═══════════════════════════════
+// ══════════════════════���════════
 // SELECTS
 // ═══════════════════════════════
 function llenarSelects() {
@@ -3195,7 +3195,7 @@ let catActual = 'todos';
 let prodDetActual = null;
 let detQty = 1;
 let tallaSelDet = null;
-const WA_NUMBER = '573022607860'; // ← Cambia por tu número WhatsApp con código de país
+const WA_NUMBER = window.INK_CONFIG.whatsappNumber;
 
 // ── CARGAR TIENDA ──
 async function loadTienda() {
