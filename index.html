@@ -16,6 +16,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./src/config.js"></script>
 <script src="./src/supabase-client.js"></script>
+<script src="./src/services/clients-service.js"></script>
 <script src="./src/state.js"></script>
 <link rel="stylesheet" href="./src/styles/app.css">
 <!-- CSS extracted from the original inline stylesheet; selectors and values are unchanged. -->
@@ -827,7 +828,7 @@ async function init() {
 
 // ═══════════════════════════════
 // NAVIGATION
-// ═══════════════════════════════
+// ══════════════════════════════���
 function goPublico() {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
@@ -1059,7 +1060,7 @@ async function checkConflicto() {
 // CLIENTES
 // ═══════════════════════════════
 async function loadClients() {
-  const { data } = await db.from('clientes').select('*').order('nombre');
+  const { data } = await window.INK_SERVICES.clients.list();
   allClients = data || [];
   renderClients();
   llenarSelects();
@@ -1174,7 +1175,7 @@ function editarCliente() {
 
 async function eliminarCliente() {
   if (!curCliId || !confirm('¿Eliminar este cliente?')) return;
-  await db.from('clientes').delete().eq('id', curCliId);
+  await window.INK_SERVICES.clients.remove(curCliId);
   closePanel('dp-cli');
   showToast('Cliente eliminado');
   await loadClients();
@@ -1971,9 +1972,9 @@ async function guardarCliente() {
     notas: document.getElementById('cli-notas').value
   };
   if (!data.nombre) { showToast('El nombre es obligatorio', 'err'); return; }
-  const { error } = id
-    ? await db.from('clientes').update(data).eq('id', id)
-    : await db.from('clientes').insert([data]);
+const { error } = id
+  ? await window.INK_SERVICES.clients.update(id, data)
+  : await window.INK_SERVICES.clients.create(data);
   if (error) { showToast('Error: ' + error.message, 'err'); return; }
   closeModal('m-cli');
   showToast(id ? 'Cliente actualizado ✓' : 'Cliente registrado ✓');
@@ -2262,7 +2263,7 @@ function llenarSelects() {
 
 // ═══════════════════════════════
 // NOTIFICACIONES
-// ═══════════════════════════════
+// ═════════════════════════���═════
 function requestNotifPermission() {
   if ('Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission().then(p => {
@@ -2357,7 +2358,7 @@ function showToast(msg, type = '') {
 
 // ═══════════════════════════════
 // SISTEMA DE USUARIOS
-// ═══════════════════════════════
+// ══════════════════════════���════
 // Roles y sus permisos
 const ROLES = {
   dueno:    { label:'Dueño',      icon:'👑', color:'role-dueno',   perms: ['dashboard','agenda','clientes','finanzas','inventario','artistas','cobros','gastos','citas','tienda','galeria','galeria','admin'] },
@@ -2868,7 +2869,7 @@ function agregarBotonSesionHeader() {
   av.addEventListener('touchend', () => clearTimeout(pressTimer));
 }
 
-// ═══════════════════════════════
+// ═════════════════════════════���═
 // ADMIN PANEL
 // ═══════════════════════════════
 // PIN del admin se guarda en Supabase (campo admin_pin de la tabla usuarios)
@@ -4313,7 +4314,7 @@ function enviarCotizWA() {
     'Hola *' + nombre + '*, aquí tu cotización:\n\n' +
     lineas + '\n\n' +
     (desc > 0 ? '💸 Descuento: ' + desc + '%\n' : '') +
-    '💰 *TOTAL: ' + fmt(total) + '*\n\n' +
+    '��� *TOTAL: ' + fmt(total) + '*\n\n' +
     '📍 ' + ESTUDIO.direccion + ', ' + ESTUDIO.ciudad + '\n' +
     '📱 ' + ESTUDIO.telefono + '\n' +
     '🌐 ' + ESTUDIO.web;
